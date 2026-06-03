@@ -16,6 +16,7 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
     <application
         android:name=".SelfLockApplication"
@@ -98,6 +99,12 @@
         <receiver
             android:name=".service.ScheduleReceiver"
             android:exported="false" />
+
+        <queries>
+            <intent>
+                <action android:name="android.accounts.AccountAuthenticator" />
+            </intent>
+        </queries>
 
     </application>
 </manifest>

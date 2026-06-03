@@ -1,5 +1,9 @@
 package com.selflock.app.ui.screens.onboarding
 
+import android.app.Activity
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Accessibility
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.material.icons.filled.Layers
@@ -21,10 +26,12 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -35,7 +42,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.selflock.app.util.PermissionHelper
+import android.accounts.AccountManager
 
 data class PermissionStep(
     val title: String,
@@ -46,10 +55,20 @@ data class PermissionStep(
 
 @Composable
 fun OnboardingScreen(
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    viewModel: OnboardingViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     var currentStep by remember { mutableIntStateOf(0) }
+
+    val chooseAccountLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val email = result.data?.getStringExtra(AccountManager.KEY_ACCOUNT_NAME)
+            viewModel.onAccountPicked(email)
+        }
+    }
 
     val steps = remember {
         listOf(
@@ -58,6 +77,14 @@ fun OnboardingScreen(
                 description = "Take control of your digital habits. Block distracting apps and websites on your schedule.",
                 icon = Icons.Filled.Lock,
                 action = {}
+            ),
+            PermissionStep(
+                title = "Recovery Account",
+                description = "Pick a Google account on this device. It will be used to verify your identity if you ever forget your master password.",
+                icon = Icons.Filled.AccountCircle,
+                action = {
+                    chooseAccountLauncher.launch(viewModel.buildChooseAccountIntent())
+                }
             ),
             PermissionStep(
                 title = "Accessibility Service",
@@ -100,6 +127,8 @@ fun OnboardingScreen(
 
     val step = steps[currentStep]
     val progress = (currentStep + 1).toFloat() / steps.size
+    val isAccountStep = currentStep == 1
+    val recoveryAccount by viewModel.recoveryAccount.collectAsState()
 
     Scaffold { padding ->
         Column(
@@ -147,6 +176,23 @@ fun OnboardingScreen(
                         textAlign = TextAlign.Center,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    if (isAccountStep) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (recoveryAccount != null) {
+                            Text(
+                                text = "Selected: $recoveryAccount",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "No account selected yet",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 
@@ -157,9 +203,19 @@ fun OnboardingScreen(
                     onClick = { step.action() },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Grant Permission")
+                    Text(if (isAccountStep) "Choose Account" else "Grant Permission")
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (isAccountStep && recoveryAccount != null) {
+                OutlinedButton(
+                    onClick = { viewModel.onAccountPicked(null) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Clear Selection")
+                }
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
@@ -171,12 +227,13 @@ fun OnboardingScreen(
                         onComplete()
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isAccountStep || recoveryAccount != null
             ) {
                 Text(if (currentStep < steps.lastIndex) "Next" else "Get Started")
             }
 
-            if (currentStep > 0 && currentStep < steps.lastIndex) {
+            if (currentStep > 0 && currentStep < steps.lastIndex && !isAccountStep) {
                 TextButton(onClick = { currentStep++ }) {
                     Text("Skip")
                 }
