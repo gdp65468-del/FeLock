@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.selflock.app.security.AppLockState
 import com.selflock.app.security.MasterPasswordManager
+import com.selflock.app.security.RecoveryAccountManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LockScreenViewModel @Inject constructor(
-    private val masterPasswordManager: MasterPasswordManager
+    private val masterPasswordManager: MasterPasswordManager,
+    private val recoveryAccountManager: RecoveryAccountManager
 ) : ViewModel() {
 
     private val _password = MutableStateFlow("")
@@ -45,6 +47,19 @@ class LockScreenViewModel @Inject constructor(
                 _error.value = "Incorrect password"
             }
             _isVerifying.value = false
+        }
+    }
+
+    fun getRecoveryAccountEmail(): String? = recoveryAccountManager.getRecoveryAccountEmail()
+
+    fun isRecoveryAccountOnDevice(): Boolean = recoveryAccountManager.isRecoveryAccountOnDevice()
+
+    fun resetPasswordWithRecovery(newPassword: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            masterPasswordManager.setPassword(newPassword)
+            AppLockState.isUnlocked = true
+            _unlocked.value = true
+            onSuccess()
         }
     }
 
