@@ -50,7 +50,7 @@ fun LockScreen(
     val isVerifying by viewModel.isVerifying.collectAsState()
     val unlocked by viewModel.unlocked.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
-    var showResetDialog by remember { mutableStateOf(false) }
+    var showForgotDialog by remember { mutableStateOf(false) }
 
     if (unlocked) {
         onUnlocked()
@@ -126,30 +126,133 @@ fun LockScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        TextButton(onClick = { showResetDialog = true }) {
+        TextButton(onClick = { showForgotDialog = true }) {
             Text("Forgot password?")
         }
     }
     }
 
-    if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset App") },
-            text = { Text("This will clear all rules, settings, and the master password. This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showResetDialog = false
-                    viewModel.onResetApp(onResetApp)
-                }) {
-                    Text("Reset")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel")
-                }
+    if (showForgotDialog) {
+        ForgotPasswordDialog(
+            viewModel = viewModel,
+            onDismiss = { showForgotDialog = false },
+            onResetApp = {
+                showForgotDialog = false
+                viewModel.onResetApp(onResetApp)
             }
         )
     }
 }
+
+@Composable
+private fun ForgotPasswordDialog(
+    viewModel: LockScreenViewModel,
+    onDismiss: () -> Unit,
+    onResetApp: () -> Unit
+) {
+    val recoveryEmail = remember { viewModel.getRecoveryAccountEmail() }
+    val accountOnDevice = remember { viewModel.isRecoveryAccountOnDevice() }
+    var stage by remember { mutableStateOf(ForgotStage.Confirm) }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var resetError by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    when (stage) {
+        ForgotStage.Confirm -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Forgot password?") },
+                text = {
+                    if (recoveryEmail != null && accountOnDevice) {
+                        Text("Verify with the recovery account $recoveryEmail to set a new master password.")
+                    } else if (recoveryEmail != null) {
+                        Text("The recovery account $recoveryEmail is not signed in on this device. Sign it in via Android settings to recover, or reset the app.")
+                    } else {
+                        Text("No recovery account was set during onboarding. You can only reset the app, which clears all rules, settings, and the master password.")
+                    }
+                },
+                confirmButton = {
+                    when {
+                        recoveryEmail != null && accountOnDevice -> {
+                            TextButton(onClick = { stage = ForgotStage.NewPassword }) {
+                                Text("Use $recoveryEmail")
+                            }
+                        }
+                        else -> {
+                            TextButton(onClick = onResetApp) {
+                                Text("Reset App")
+                            }
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        ForgotStage.NewPassword -> {
+            AlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text("Set new master password") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = newPassword,
+                            onValueChange = { newPassword = it; resetError = null },
+                            label = { Text("New password") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = resetError != null,
+                            supportingText = resetError?.let { { Text(it) } }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = confirmPassword,
+                            onValueChange = { confirmPassword = it; resetError = null },
+                            label = { Text("Confirm password") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = resetError != null
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (isSaving) return@TextButton
+                            when {
+                                newPassword.length < 4 -> {
+                                    resetError = "Password must be at least 4 characters"
+                                }
+                                newPassword != confirmPassword -> {
+                                    resetError = "Passwords do not match"
+                                }
+                                else -> {
+                                    isSaving = true
+                                    viewModel.resetPasswordWithRecovery(newPassword) {
+                                        isSaving = false
+                                        onDismiss()
+                                    }
+                                }
+                            }
+                        },
+                        enabled = !isSaving && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()
+                    ) {
+                        Text("Save")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+private enum class ForgotStage { Confirm, NewPassword }
