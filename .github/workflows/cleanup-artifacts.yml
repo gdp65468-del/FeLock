@@ -1,0 +1,57 @@
+name: Cleanup Artifacts
+
+on:
+  workflow_run:
+    workflows: ["Build Debug APK"]
+    types: [completed]
+  pull_request:
+    branches: [master]
+    types: [closed]
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  cleanup-merged-pr:
+    name: Delete artifacts from merged PR
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete artifacts for merged PR runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_ids=$(gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
+            --jq '.workflow_runs[].id')
+          for run_id in $run_ids; do
+            artifact_ids=$(gh api "repos/$REPO/actions/runs/$run_id/artifacts?per_page=100" \
+              --jq '.artifacts[].id')
+            for artifact_id in $artifact_ids; do
+              echo "Deleting artifact $artifact_id from merged PR run $run_id"
+              gh api --method DELETE "repos/$REPO/actions/artifacts/$artifact_id"
+            done
+          done
+
+  cleanup-old-master:
+    name: Keep only last 3 master artifacts
+    if: github.event_name == 'workflow_run' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+
+    steps:
+      - name: Delete app-debug artifacts beyond the 3 most recent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          old_ids=$(gh api "repos/$REPO/actions/artifacts?name=app-debug&per_page=100" \
+            --jq '[.artifacts | sort_by(.created_at) | reverse | .[3:][] | .id] | .[]')
+          for id in $old_ids; do
+            echo "Deleting old artifact $id"
+            gh api --method DELETE "repos/$REPO/actions/artifacts/$id"
+          done
