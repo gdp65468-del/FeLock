@@ -100,11 +100,12 @@
             android:name=".service.ScheduleReceiver"
             android:exported="false" />
 
-        <queries>
-            <intent>
-                <action android:name="android.accounts.AccountAuthenticator" />
-            </intent>
-        </queries>
-
     </application>
+
+    <queries>
+        <intent>
+            <action android:name="android.accounts.AccountAuthenticator" />
+        </intent>
+    </queries>
+
 </manifest>
