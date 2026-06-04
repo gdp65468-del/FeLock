@@ -78,12 +78,14 @@ class SelfLockAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun launchBlockOverlay(packageName: String, appName: String, status: com.selflock.app.domain.model.RuleStatus, domain: String? = null) {
+    private fun launchBlockOverlay(packageName: String?, appName: String, status: com.selflock.app.domain.model.RuleStatus, domain: String? = null) {
         val intent = Intent(this, BlockOverlayActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             putExtra(BlockOverlayActivity.EXTRA_APP_NAME, appName)
             putExtra(BlockOverlayActivity.EXTRA_REMAINING_MINUTES, status.remainingTimeMinutes ?: 0L)
-            putExtra(BlockOverlayActivity.EXTRA_PACKAGE_NAME, packageName)
+            if (packageName != null) {
+                putExtra(BlockOverlayActivity.EXTRA_PACKAGE_NAME, packageName)
+            }
             if (domain != null) {
                 putExtra(BlockOverlayActivity.EXTRA_DOMAIN, domain)
             }
@@ -98,14 +100,27 @@ class SelfLockAccessibilityService : AccessibilityService() {
         for (viewId in urlBarIds) {
             val nodes = rootNode.findAccessibilityNodeInfosByViewId(viewId)
             if (nodes != null && nodes.isNotEmpty()) {
-                val text = nodes[0].text?.toString()
-                if (!text.isNullOrEmpty()) {
+                val node = nodes[0]
+                if (node.isFocused || node.isSelected) return
+                val text = node.text?.toString()
+                if (!text.isNullOrEmpty() && looksLikeNavigatedUrl(text)) {
                     MonitoringService.onBrowserUrlDetected(text, packageName)
                     checkAndBlockWebsite(text, packageName)
                     break
                 }
             }
         }
+    }
+
+    private fun looksLikeNavigatedUrl(text: String): Boolean {
+        if (text.contains(" ")) return false
+        if (text.startsWith("http://") || text.startsWith("https://")) return true
+        if (text.contains(".") && !text.startsWith(".")) {
+            val parts = text.split("/")
+            val hostPart = parts[0]
+            return hostPart.contains(".") && hostPart.substringAfterLast(".").length >= 2
+        }
+        return false
     }
 
     private fun checkAndBlockWebsite(url: String, browserPackage: String) {
@@ -125,7 +140,7 @@ class SelfLockAccessibilityService : AccessibilityService() {
                 } ?: return@launch
                 val status = checkBlockStatusUseCase.checkWebsiteRule(matchedRule)
                 if (status.isActive) {
-                    launchBlockOverlay(browserPackage, matchedRule.domain, status, matchedRule.domain)
+                    launchBlockOverlay(null, matchedRule.domain, status, matchedRule.domain)
                 }
             }
         }
