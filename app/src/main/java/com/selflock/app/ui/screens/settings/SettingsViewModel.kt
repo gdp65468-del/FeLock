@@ -53,16 +53,11 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun disableMasterPassword(password: String): Boolean {
-        var result = false
+    fun disableMasterPassword() {
         viewModelScope.launch {
-            if (masterPasswordManager.verifyPassword(password)) {
-                masterPasswordManager.clearPassword()
-                _masterPasswordEnabled.value = false
-                result = true
-            }
+            masterPasswordManager.clearPassword()
+            _masterPasswordEnabled.value = false
         }
-        return result
     }
 
     suspend fun verifyPassword(password: String): Boolean {

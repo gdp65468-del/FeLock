@@ -140,7 +140,7 @@ fun SettingsSheet(
         DisablePasswordDialog(
             onDismiss = { showDisableDialog = false },
             onVerified = {
-                viewModel.disableMasterPassword("")
+                viewModel.disableMasterPassword()
             },
             verifyPassword = { password ->
                 viewModel.verifyPassword(password)
