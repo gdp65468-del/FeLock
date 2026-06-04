@@ -6,6 +6,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.addCallback
+import androidx.activity.enableEdgeToEdge
 import com.selflock.app.MainActivity
 import com.selflock.app.ui.theme.SelfLockTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,6 +21,8 @@ class LockScreenActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+
+        enableEdgeToEdge()
 
         onBackPressedDispatcher.addCallback(this) {}
 
