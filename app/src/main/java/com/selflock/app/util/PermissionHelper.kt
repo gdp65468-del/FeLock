@@ -59,8 +59,8 @@ object PermissionHelper {
     fun getUsageAccessSettingsIntent(): Intent =
         Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
 
-    fun getOverlaySettingsIntent(): Intent =
-        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+    fun getOverlaySettingsIntent(context: Context): Intent =
+        Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, android.net.Uri.parse("package:${context.packageName}"))
 
     fun getNotificationSettingsIntent(context: Context): Intent =
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {

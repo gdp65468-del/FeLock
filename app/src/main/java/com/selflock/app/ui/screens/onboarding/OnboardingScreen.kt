@@ -57,7 +57,8 @@ data class PermissionStep(
     val title: String,
     val description: String,
     val icon: ImageVector,
-    val action: () -> Unit
+    val action: () -> Unit,
+    val isGranted: () -> Boolean
 )
 
 @Composable
@@ -77,66 +78,73 @@ fun OnboardingScreen(
         }
     }
 
-    val steps = remember {
-        listOf(
-            PermissionStep(
-                title = "Welcome to SelfLock",
-                description = "Take control of your digital habits. Block distracting apps and websites on your schedule.",
-                icon = Icons.Filled.Lock,
-                action = {}
-            ),
-            PermissionStep(
-                title = "Recovery Account",
-                description = "Pick a Google account on this device. It will be used to verify your identity if you ever forget your master password.",
-                icon = Icons.Filled.AccountCircle,
-                action = {
-                    chooseAccountLauncher.launch(viewModel.buildChooseAccountIntent())
-                }
-            ),
-            PermissionStep(
-                title = "Master Password",
-                description = "Optionally set a master password. You'll need to enter it every time the app launches.",
-                icon = Icons.Filled.VerifiedUser,
-                action = {}
-            ),
-            PermissionStep(
-                title = "Accessibility Service",
-                description = "Detects which app is in the foreground and reads browser URLs for usage tracking.",
-                icon = Icons.Filled.Accessibility,
-                action = { context.startActivity(PermissionHelper.getAccessibilitySettingsIntent()) }
-            ),
-            PermissionStep(
-                title = "Usage Access",
-                description = "Tracks how long you spend in each app for daily budget enforcement.",
-                icon = Icons.Filled.BarChart,
-                action = { context.startActivity(PermissionHelper.getUsageAccessSettingsIntent()) }
-            ),
-            PermissionStep(
-                title = "Display Over Other Apps",
-                description = "Shows a blocking overlay when you try to open a restricted app.",
-                icon = Icons.Filled.Layers,
-                action = { context.startActivity(PermissionHelper.getOverlaySettingsIntent()) }
-            ),
-            PermissionStep(
-                title = "Notifications",
-                description = "Shows persistent notifications about service status and budget warnings.",
-                icon = Icons.Filled.Notifications,
-                action = { context.startActivity(PermissionHelper.getNotificationSettingsIntent(context)) }
-            ),
-            PermissionStep(
-                title = "Exact Alarms",
-                description = "Schedules precise block/unblock times for your rules.",
-                icon = Icons.Filled.Security,
-                action = { context.startActivity(PermissionHelper.getExactAlarmSettingsIntent()) }
-            ),
-            PermissionStep(
-                title = "Battery Optimization",
-                description = "Disabling battery optimization ensures SelfLock runs continuously in the background.",
-                icon = Icons.Filled.BatteryAlert,
-                action = { context.startActivity(PermissionHelper.getBatteryOptimizationSettingsIntent(context)) }
-            )
+    val steps = listOf(
+        PermissionStep(
+            title = "Welcome to SelfLock",
+            description = "Take control of your digital habits. Block distracting apps and websites on your schedule.",
+            icon = Icons.Filled.Lock,
+            action = {},
+            isGranted = { true }
+        ),
+        PermissionStep(
+            title = "Recovery Account",
+            description = "Pick a Google account on this device. It will be used to verify your identity if you ever forget your master password.",
+            icon = Icons.Filled.AccountCircle,
+            action = {
+                chooseAccountLauncher.launch(viewModel.buildChooseAccountIntent())
+            },
+            isGranted = { recoveryAccount != null }
+        ),
+        PermissionStep(
+            title = "Master Password",
+            description = "Optionally set a master password. You'll need to enter it every time the app launches.",
+            icon = Icons.Filled.VerifiedUser,
+            action = {},
+            isGranted = { passwordSet }
+        ),
+        PermissionStep(
+            title = "Accessibility Service",
+            description = "Detects which app is in the foreground and reads browser URLs for usage tracking.",
+            icon = Icons.Filled.Accessibility,
+            action = { context.startActivity(PermissionHelper.getAccessibilitySettingsIntent()) },
+            isGranted = { PermissionHelper.isAccessibilityServiceEnabled(context) }
+        ),
+        PermissionStep(
+            title = "Usage Access",
+            description = "Tracks how long you spend in each app for daily budget enforcement.",
+            icon = Icons.Filled.BarChart,
+            action = { context.startActivity(PermissionHelper.getUsageAccessSettingsIntent()) },
+            isGranted = { PermissionHelper.isUsageAccessGranted(context) }
+        ),
+        PermissionStep(
+            title = "Display Over Other Apps",
+            description = "Shows a blocking overlay when you try to open a restricted app.",
+            icon = Icons.Filled.Layers,
+            action = { context.startActivity(PermissionHelper.getOverlaySettingsIntent(context)) },
+            isGranted = { PermissionHelper.isOverlayPermissionGranted(context) }
+        ),
+        PermissionStep(
+            title = "Notifications",
+            description = "Shows persistent notifications about service status and budget warnings.",
+            icon = Icons.Filled.Notifications,
+            action = { context.startActivity(PermissionHelper.getNotificationSettingsIntent(context)) },
+            isGranted = { PermissionHelper.isNotificationPermissionGranted(context) }
+        ),
+        PermissionStep(
+            title = "Exact Alarms",
+            description = "Schedules precise block/unblock times for your rules.",
+            icon = Icons.Filled.Security,
+            action = { context.startActivity(PermissionHelper.getExactAlarmSettingsIntent()) },
+            isGranted = { PermissionHelper.isExactAlarmAllowed(context) }
+        ),
+        PermissionStep(
+            title = "Battery Optimization",
+            description = "Disabling battery optimization ensures SelfLock runs continuously in the background.",
+            icon = Icons.Filled.BatteryAlert,
+            action = { context.startActivity(PermissionHelper.getBatteryOptimizationSettingsIntent(context)) },
+            isGranted = { PermissionHelper.isBatteryOptimizationDisabled(context) }
         )
-    }
+    )
 
     val step = steps[currentStep]
     val progress = (currentStep + 1).toFloat() / steps.size
@@ -233,17 +241,6 @@ fun OnboardingScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            if (currentStep > 0 && !isPasswordStep) {
-                Button(
-                    onClick = { step.action() },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (isAccountStep) "Choose Account" else "Grant Permission")
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             if (isAccountStep && recoveryAccount != null) {
                 OutlinedButton(
                     onClick = { viewModel.onAccountPicked(null) },
@@ -254,23 +251,36 @@ fun OnboardingScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Button(
-                onClick = {
-                    if (currentStep < steps.lastIndex) {
-                        currentStep++
-                    } else {
-                        onComplete()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isAccountStep || recoveryAccount != null
-            ) {
-                Text(if (currentStep < steps.lastIndex) "Next" else "Get Started")
-            }
+            val isGranted = step.isGranted()
 
-            if (currentStep > 0 && currentStep < steps.lastIndex && !isAccountStep) {
-                TextButton(onClick = { currentStep++ }) {
-                    Text("Skip")
+            if (!isGranted) {
+                if (!isPasswordStep) {
+                    Button(
+                        onClick = { step.action() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (isAccountStep) "Choose Account" else "Grant Permission")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                if (currentStep < steps.lastIndex) {
+                    TextButton(onClick = { currentStep++ }) {
+                        Text("Skip")
+                    }
+                }
+            } else {
+                Button(
+                    onClick = {
+                        if (currentStep < steps.lastIndex) {
+                            currentStep++
+                        } else {
+                            onComplete()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (currentStep < steps.lastIndex) "Next" else "Get Started")
                 }
             }
         }

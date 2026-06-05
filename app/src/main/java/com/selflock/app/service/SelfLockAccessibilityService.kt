@@ -3,6 +3,7 @@ package com.selflock.app.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import com.selflock.app.BlockOverlayActivity
 import com.selflock.app.data.repository.AppRuleRepository
 import com.selflock.app.data.repository.WebsiteRuleRepository
@@ -130,9 +131,10 @@ class SelfLockAccessibilityService : AccessibilityService() {
             if (now - lastWebsiteBlockTime < WEBSITE_BLOCK_COOLDOWN_MS) return
             lastWebsiteBlockTime = now
 
-            performGlobalAction(GLOBAL_ACTION_BACK)
+            closeCurrentBrowserTab(browserPackage)
 
             scope.launch {
+                delay(300)
                 val rules = websiteRuleRepository.getActiveRulesList()
                 val matchedRule = rules.firstOrNull { rule ->
                     domain.equals(rule.domain, ignoreCase = true) ||
@@ -143,6 +145,24 @@ class SelfLockAccessibilityService : AccessibilityService() {
                     launchBlockOverlay(null, matchedRule.domain, status, matchedRule.domain)
                 }
             }
+        }
+    }
+
+    private fun closeCurrentBrowserTab(packageName: String) {
+        val rootNode = rootInActiveWindow ?: return
+        val closeNodes = rootNode.findAccessibilityNodeInfosByViewId("$packageName:id/close_button")
+        if (closeNodes.isNotEmpty()) {
+            closeNodes.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            return
+        }
+        val closeByText = rootNode.findAccessibilityNodeInfosByText("Close tab")
+        if (closeByText.isNotEmpty()) {
+            closeByText.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            return
+        }
+        val closeByTextFallback = rootNode.findAccessibilityNodeInfosByText("Close")
+        if (closeByTextFallback.isNotEmpty()) {
+            closeByTextFallback.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
     }
 
