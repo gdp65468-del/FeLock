@@ -131,10 +131,7 @@ class SelfLockAccessibilityService : AccessibilityService() {
             if (now - lastWebsiteBlockTime < WEBSITE_BLOCK_COOLDOWN_MS) return
             lastWebsiteBlockTime = now
 
-            closeCurrentBrowserTab(browserPackage)
-
             scope.launch {
-                delay(300)
                 val rules = websiteRuleRepository.getActiveRulesList()
                 val matchedRule = rules.firstOrNull { rule ->
                     domain.equals(rule.domain, ignoreCase = true) ||
@@ -142,6 +139,8 @@ class SelfLockAccessibilityService : AccessibilityService() {
                 } ?: return@launch
                 val status = checkBlockStatusUseCase.checkWebsiteRule(matchedRule)
                 if (status.isActive) {
+                    closeCurrentBrowserTab(browserPackage)
+                    delay(300)
                     launchBlockOverlay(null, matchedRule.domain, status, matchedRule.domain)
                 }
             }
