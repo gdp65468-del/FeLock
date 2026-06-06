@@ -78,6 +78,10 @@ fun OnboardingScreen(
         }
     }
 
+    val recoveryAccount by viewModel.recoveryAccount.collectAsState()
+    val passwordSet by viewModel.passwordSet.collectAsState()
+    val isSavingPassword by viewModel.isSavingPassword.collectAsState()
+
     val steps = listOf(
         PermissionStep(
             title = "Welcome to SelfLock",
@@ -150,9 +154,6 @@ fun OnboardingScreen(
     val progress = (currentStep + 1).toFloat() / steps.size
     val isAccountStep = currentStep == 1
     val isPasswordStep = currentStep == 2
-    val recoveryAccount by viewModel.recoveryAccount.collectAsState()
-    val passwordSet by viewModel.passwordSet.collectAsState()
-    val isSavingPassword by viewModel.isSavingPassword.collectAsState()
 
     Scaffold { padding ->
         Column(

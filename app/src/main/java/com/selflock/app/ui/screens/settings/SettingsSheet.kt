@@ -68,7 +68,7 @@ fun SettingsSheet(
         PermissionRow(
             name = "Display Over Other Apps",
             granted = permissions.overlay,
-            onFix = { context.startActivity(PermissionHelper.getOverlaySettingsIntent()) }
+            onFix = { context.startActivity(PermissionHelper.getOverlaySettingsIntent(context)) }
         )
         PermissionRow(
             name = "Notifications",
