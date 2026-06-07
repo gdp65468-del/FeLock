@@ -87,7 +87,7 @@ fun OnboardingScreen(
         }
     }
 
-    val _ = checkTrigger
+    val trigger = checkTrigger
 
     val chooseAccountLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
