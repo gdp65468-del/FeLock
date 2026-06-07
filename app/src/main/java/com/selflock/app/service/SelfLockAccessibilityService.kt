@@ -3,6 +3,7 @@ package com.selflock.app.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import com.selflock.app.BlockOverlayActivity
 import com.selflock.app.data.repository.AppRuleRepository
 import com.selflock.app.data.repository.WebsiteRuleRepository
@@ -138,10 +139,29 @@ class SelfLockAccessibilityService : AccessibilityService() {
                 } ?: return@launch
                 val status = checkBlockStatusUseCase.checkWebsiteRule(matchedRule)
                 if (status.isActive) {
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    closeCurrentBrowserTab(browserPackage)
+                    delay(300)
                     launchBlockOverlay(null, matchedRule.domain, status, matchedRule.domain)
                 }
             }
+        }
+    }
+
+    private fun closeCurrentBrowserTab(packageName: String) {
+        val rootNode = rootInActiveWindow ?: return
+        val closeNodes = rootNode.findAccessibilityNodeInfosByViewId("$packageName:id/close_button")
+        if (closeNodes.isNotEmpty()) {
+            closeNodes.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            return
+        }
+        val closeByText = rootNode.findAccessibilityNodeInfosByText("Close tab")
+        if (closeByText.isNotEmpty()) {
+            closeByText.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            return
+        }
+        val closeByTextFallback = rootNode.findAccessibilityNodeInfosByText("Close")
+        if (closeByTextFallback.isNotEmpty()) {
+            closeByTextFallback.firstOrNull { it.isClickable }?.performAction(AccessibilityNodeInfo.ACTION_CLICK)
         }
     }
 
