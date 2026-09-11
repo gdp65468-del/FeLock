@@ -1,6 +1,7 @@
 name: Build Debug APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [ master ]
   pull_request:
@@ -26,7 +27,7 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Upload APK
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
