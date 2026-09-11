@@ -4,26 +4,17 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.selflock.app.data.local.entity.AppRule
-import com.selflock.app.data.local.entity.WebsiteRule
-import com.selflock.app.domain.model.BlockType
+import com.selflock.app.data.local.entity.LockoutRule
 import com.selflock.app.service.ScheduleReceiver
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
 object ScheduleAlarmHelper {
-    fun scheduleAlarmsForWebsiteRule(context: Context, alarmManager: AlarmManager, rule: WebsiteRule) {
-        if (!rule.isEnabled || rule.blockType != BlockType.SCHEDULE) return
-        val start = rule.getStartTime() ?: return
-        val end = rule.getEndTime() ?: return
-        scheduleTimeAlarms(context, alarmManager, rule.id, start, end)
-    }
-
-    fun scheduleAlarmsForAppRule(context: Context, alarmManager: AlarmManager, rule: AppRule) {
-        if (!rule.isEnabled || rule.blockType != BlockType.SCHEDULE) return
-        val start = rule.getStartTime() ?: return
-        val end = rule.getEndTime() ?: return
+    fun scheduleAlarmsForRule(context: Context, alarmManager: AlarmManager, rule: LockoutRule) {
+        if (!rule.isEnabled) return
+        val start = rule.getStartTime()
+        val end = rule.getEndTime()
         scheduleTimeAlarms(context, alarmManager, rule.id, start, end)
     }
 

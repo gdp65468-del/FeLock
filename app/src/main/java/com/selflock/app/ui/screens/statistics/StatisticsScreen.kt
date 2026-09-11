@@ -29,10 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.selflock.app.domain.model.TargetType
 import com.selflock.app.ui.components.AppIcon
 import com.selflock.app.ui.components.DateRangeSelector
-import com.selflock.app.ui.components.FaviconImage
 import com.selflock.app.ui.components.SummaryCard
 import com.selflock.app.ui.components.UsageBar
 import com.selflock.app.ui.util.Formatters
@@ -117,21 +115,7 @@ fun StatisticsScreen(
                     }
                 }
 
-                if (state.websiteUsage.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Websites",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    items(state.websiteUsage) { item ->
-                        UsageItemRow(item)
-                    }
-                }
-
-                if (state.appUsage.isEmpty() && state.websiteUsage.isEmpty()) {
+                if (state.appUsage.isEmpty()) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -161,17 +145,11 @@ private fun UsageItemRow(item: UsageItem) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (item.targetType == TargetType.APP && item.packageName != null) {
+            if (item.packageName != null) {
                 AppIcon(
                     packageName = item.packageName,
                     modifier = Modifier.size(32.dp),
                     contentDescription = item.displayName
-                )
-                Spacer(modifier = Modifier.size(12.dp))
-            } else if (item.targetType == TargetType.WEBSITE) {
-                FaviconImage(
-                    domain = item.displayName,
-                    size = 32.dp
                 )
                 Spacer(modifier = Modifier.size(12.dp))
             }

@@ -105,7 +105,7 @@ fun OnboardingScreen(
     val steps = listOf(
         PermissionStep(
             title = "Welcome to SelfLock",
-            description = "Take control of your digital habits. Block distracting apps and websites on your schedule.",
+            description = "Take control of your digital habits. Block distracting apps on your schedule.",
             icon = Icons.Filled.Lock,
             action = {},
             isGranted = { true }
@@ -128,14 +128,14 @@ fun OnboardingScreen(
         ),
         PermissionStep(
             title = "Accessibility Service",
-            description = "Detects which app is in the foreground and reads browser URLs for usage tracking.",
+            description = "Detects which app is in the foreground for immediate block enforcement.",
             icon = Icons.Filled.Accessibility,
             action = { context.startActivity(PermissionHelper.getAccessibilitySettingsIntent()) },
             isGranted = { PermissionHelper.isAccessibilityServiceEnabled(context) }
         ),
         PermissionStep(
             title = "Usage Access",
-            description = "Tracks how long you spend in each app for daily budget enforcement.",
+            description = "Tracks time in your selected progress app and provides backup lockout enforcement.",
             icon = Icons.Filled.BarChart,
             action = { context.startActivity(PermissionHelper.getUsageAccessSettingsIntent()) },
             isGranted = { PermissionHelper.isUsageAccessGranted(context) }
