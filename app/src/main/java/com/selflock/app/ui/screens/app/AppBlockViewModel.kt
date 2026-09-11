@@ -2,16 +2,17 @@ package com.selflock.app.ui.screens.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.selflock.app.data.local.entity.AppRule
-import com.selflock.app.data.repository.AppRuleRepository
-import com.selflock.app.domain.model.BlockType
-import com.selflock.app.domain.model.RuleStatus
-import com.selflock.app.domain.usecase.CheckBlockStatusUseCase
+import com.selflock.app.data.local.entity.LockoutRule
+import com.selflock.app.data.local.entity.LockoutRuleWithApps
+import com.selflock.app.data.repository.LockoutRepository
 import com.selflock.app.domain.usecase.GetInstalledAppsUseCase
 import com.selflock.app.domain.usecase.InstalledApp
-import com.selflock.app.domain.usecase.IsRuleLockedUseCase
+import com.selflock.app.domain.usecase.LockoutManager
 import com.selflock.app.security.MasterPasswordManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,56 +21,66 @@ import java.time.Instant
 import javax.inject.Inject
 
 data class AppRuleUiState(
-    val rule: AppRule,
-    val status: RuleStatus
+    val ruleWithApps: LockoutRuleWithApps,
+    val isActive: Boolean,
+    val remainingMinutes: Long,
+    val progressSeconds: Long,
+    val rewardsUsed: Int,
+    val rewardActiveUntil: Long,
+    val contingencyActiveUntil: Long
 )
 
 enum class RuleAction { TOGGLE, DELETE }
 
-data class PendingAction(
-    val rule: AppRule,
-    val action: RuleAction
-)
+data class PendingAction(val rule: LockoutRule, val action: RuleAction)
 
 @HiltViewModel
 class AppBlockViewModel @Inject constructor(
-    private val repository: AppRuleRepository,
-    private val checkBlockStatusUseCase: CheckBlockStatusUseCase,
-    private val isRuleLockedUseCase: IsRuleLockedUseCase,
+    private val repository: LockoutRepository,
+    private val lockoutManager: LockoutManager,
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
     private val masterPasswordManager: MasterPasswordManager
 ) : ViewModel() {
-
     private val _rules = MutableStateFlow<List<AppRuleUiState>>(emptyList())
     val rules: StateFlow<List<AppRuleUiState>> = _rules.asStateFlow()
-
     private val _installedApps = MutableStateFlow<List<InstalledApp>>(emptyList())
     val installedApps: StateFlow<List<InstalledApp>> = _installedApps.asStateFlow()
-
     private val _showAddSheet = MutableStateFlow(false)
     val showAddSheet: StateFlow<Boolean> = _showAddSheet.asStateFlow()
-
     private val _pendingAction = MutableStateFlow<PendingAction?>(null)
     val pendingAction: StateFlow<PendingAction?> = _pendingAction.asStateFlow()
+    private var ruleList: List<LockoutRuleWithApps> = emptyList()
 
     init {
         viewModelScope.launch {
-            repository.getAllRules().collect { ruleList ->
-                val uiStates = ruleList.map { rule ->
-                    AppRuleUiState(
-                        rule = rule,
-                        status = checkBlockStatusUseCase.checkAppRule(rule)
-                    )
-                }
-                _rules.value = uiStates
+            repository.getAllRules().collect {
+                ruleList = it
+                refreshStates()
             }
         }
-        loadInstalledApps()
+        viewModelScope.launch {
+            while (true) {
+                refreshStates()
+                delay(5000)
+            }
+        }
+        viewModelScope.launch { _installedApps.value = getInstalledAppsUseCase.execute() }
     }
 
-    private fun loadInstalledApps() {
-        viewModelScope.launch {
-            _installedApps.value = getInstalledAppsUseCase.execute()
+    private suspend fun refreshStates() {
+        _rules.value = ruleList.map { ruleWithApps ->
+            val rule = ruleWithApps.rule
+            val active = lockoutManager.isActive(rule)
+            val session = lockoutManager.getSession(rule)
+            AppRuleUiState(
+                ruleWithApps = ruleWithApps,
+                isActive = active,
+                remainingMinutes = lockoutManager.remainingMinutes(rule),
+                progressSeconds = session.progressSeconds,
+                rewardsUsed = session.rewardsUsed,
+                rewardActiveUntil = session.rewardActiveUntil,
+                contingencyActiveUntil = session.contingencyActiveUntil
+            )
         }
     }
 
@@ -77,115 +88,102 @@ class AppBlockViewModel @Inject constructor(
     fun hideAddSheet() { _showAddSheet.value = false }
 
     fun addRule(
-        packageName: String,
-        appName: String,
-        blockType: BlockType,
-        startHour: Int?,
-        startMinute: Int?,
-        endHour: Int?,
-        endMinute: Int?,
+        name: String,
+        allowedApps: List<InstalledApp>,
+        progressApp: InstalledApp,
+        startHour: Int,
+        startMinute: Int,
+        endHour: Int,
+        endMinute: Int,
         days: String,
-        dailyLimitMinutes: Int?,
+        goalMinutes: Int,
+        rewardMinutes: Int,
+        maxRewards: Int,
+        contingencyAfterMinutes: Int,
+        contingencyMinutes: Int,
+        blockSettings: Boolean,
         isPasswordProtected: Boolean,
         password: String?
     ) {
         viewModelScope.launch {
-            val passwordHash = if (isPasswordProtected && password != null) {
-                hashPassword(password)
-            } else null
-
             repository.insert(
-                AppRule(
-                    packageName = packageName,
-                    appName = appName,
-                    blockType = blockType,
+                LockoutRule(
+                    name = name.trim(),
                     scheduleStartHour = startHour,
                     scheduleStartMinute = startMinute,
                     scheduleEndHour = endHour,
                     scheduleEndMinute = endMinute,
                     scheduleDays = days,
-                    dailyLimitMinutes = dailyLimitMinutes,
+                    progressPackageName = progressApp.packageName,
+                    progressAppName = progressApp.appName,
+                    goalMinutes = goalMinutes,
+                    rewardMinutes = rewardMinutes,
+                    maxRewards = maxRewards,
+                    contingencyAfterMinutes = contingencyAfterMinutes,
+                    contingencyMinutes = contingencyMinutes,
+                    blockSettings = blockSettings,
                     isPasswordProtected = isPasswordProtected,
-                    passwordHash = passwordHash,
+                    passwordHash = if (isPasswordProtected && password != null) hashPassword(password) else null,
                     createdAt = Instant.now().toEpochMilli(),
                     updatedAt = Instant.now().toEpochMilli()
-                )
+                ),
+                allowedApps.map { it.packageName to it.appName }
             )
             _showAddSheet.value = false
         }
     }
 
-    fun toggleRule(rule: AppRule) {
-        if (isRuleLockedUseCase.isAppRuleLocked(rule)) return
+    fun toggleRule(rule: LockoutRule) {
+        if (lockoutManager.isActive(rule)) return
         if (rule.isPasswordProtected) {
             _pendingAction.value = PendingAction(rule, RuleAction.TOGGLE)
-            return
-        }
-        viewModelScope.launch {
-            repository.update(rule.copy(isEnabled = !rule.isEnabled, updatedAt = Instant.now().toEpochMilli()))
+        } else {
+            viewModelScope.launch { repository.update(rule.copy(isEnabled = !rule.isEnabled, updatedAt = Instant.now().toEpochMilli())) }
         }
     }
 
-    fun deleteRule(rule: AppRule) {
-        if (isRuleLockedUseCase.isAppRuleLocked(rule)) return
+    fun deleteRule(rule: LockoutRule) {
+        if (lockoutManager.isActive(rule)) return
         if (rule.isPasswordProtected) {
             _pendingAction.value = PendingAction(rule, RuleAction.DELETE)
-            return
-        }
-        viewModelScope.launch {
-            repository.delete(rule)
+        } else {
+            viewModelScope.launch { repository.delete(rule) }
         }
     }
 
-    fun dismissPendingAction() {
-        _pendingAction.value = null
-    }
+    fun dismissPendingAction() { _pendingAction.value = null }
 
-    suspend fun verifyPassword(password: String, rule: AppRule): Boolean {
-        if (rule.passwordHash != null && verifyRulePassword(password, rule.passwordHash)) {
-            return true
-        }
-        if (masterPasswordManager.isEnabled()) {
-            return masterPasswordManager.verifyPassword(password)
-        }
-        return false
+    suspend fun verifyPassword(password: String, rule: LockoutRule): Boolean {
+        if (rule.passwordHash != null && verifyRulePassword(password, rule.passwordHash)) return true
+        return masterPasswordManager.isEnabled() && masterPasswordManager.verifyPassword(password)
     }
 
     fun executePendingAction() {
         val pending = _pendingAction.value ?: return
         viewModelScope.launch {
             when (pending.action) {
-                RuleAction.TOGGLE -> {
-                    repository.update(pending.rule.copy(isEnabled = !pending.rule.isEnabled, updatedAt = Instant.now().toEpochMilli()))
-                }
-                RuleAction.DELETE -> {
-                    repository.delete(pending.rule)
-                }
+                RuleAction.TOGGLE -> repository.update(pending.rule.copy(isEnabled = !pending.rule.isEnabled, updatedAt = Instant.now().toEpochMilli()))
+                RuleAction.DELETE -> repository.delete(pending.rule)
             }
             _pendingAction.value = null
         }
     }
 
-    fun isRuleLocked(rule: AppRule): Boolean = isRuleLockedUseCase.isAppRuleLocked(rule)
-
     fun isMasterPasswordEnabled(): Boolean = masterPasswordManager.isEnabled()
 
-    private suspend fun hashPassword(password: String): String {
+    private suspend fun hashPassword(password: String): String = withContext(Dispatchers.Default) {
         val salt = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
         val spec = javax.crypto.spec.PBEKeySpec(password.toCharArray(), salt, 600000, 256)
-        val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val hash = factory.generateSecret(spec).encoded
-        return android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP) + ":" +
-            android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP)
+        val hash = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP) + ":" + android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP)
     }
 
-    private fun verifyRulePassword(password: String, storedHash: String): Boolean {
+    private suspend fun verifyRulePassword(password: String, storedHash: String): Boolean = withContext(Dispatchers.Default) {
         val parts = storedHash.split(":")
-        if (parts.size != 2) return false
+        if (parts.size != 2) return@withContext false
         val salt = android.util.Base64.decode(parts[1], android.util.Base64.NO_WRAP)
         val spec = javax.crypto.spec.PBEKeySpec(password.toCharArray(), salt, 600000, 256)
-        val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val hash = factory.generateSecret(spec).encoded
-        return android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP) == parts[0]
+        val hash = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+        android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP) == parts[0]
     }
 }

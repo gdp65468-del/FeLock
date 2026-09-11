@@ -46,13 +46,13 @@ fun SetPasswordSheet(
         Column(
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp).fillMaxWidth()
         ) {
-            Text("Set Master Password", style = MaterialTheme.typography.headlineSmall)
+            Text("Definir senha mestra", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it; error = null },
-                label = { Text("Password") },
+                label = { Text("Senha") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -64,7 +64,7 @@ fun SetPasswordSheet(
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it; error = null },
-                label = { Text("Confirm password") },
+                label = { Text("Confirmar senha") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -78,8 +78,8 @@ fun SetPasswordSheet(
             Button(
                 onClick = {
                     when {
-                        password.length < 4 -> error = "Password must be at least 4 characters"
-                        password != confirmPassword -> error = "Passwords do not match"
+                        password.length < 4 -> error = "A senha deve ter pelo menos 4 caracteres"
+                        password != confirmPassword -> error = "As senhas não coincidem"
                         else -> {
                             isSaving = true
                             scope.launch {
@@ -93,7 +93,7 @@ fun SetPasswordSheet(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !isSaving && password.isNotEmpty() && confirmPassword.isNotEmpty()
             ) {
-                Text("Save Password")
+                Text("Salvar senha")
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -102,7 +102,7 @@ fun SetPasswordSheet(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Cancel")
+                Text("Cancelar")
             }
 
             Spacer(modifier = Modifier.height(16.dp))

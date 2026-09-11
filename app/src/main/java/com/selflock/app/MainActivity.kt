@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.selflock.app.security.AppLockState
 import com.selflock.app.security.MasterPasswordManager
+import com.selflock.app.service.MonitoringService
 import com.selflock.app.ui.navigation.MainNavGraph
 import com.selflock.app.ui.screens.lock.LockScreenActivity
 import com.selflock.app.ui.theme.SelfLockTheme
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
         }
 
         enableEdgeToEdge()
+        startForegroundService(Intent(this, MonitoringService::class.java))
 
         setContent {
             SelfLockTheme {

@@ -40,17 +40,17 @@ fun AppBlockScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("App Blocks") },
+                title = { Text("Bloqueios") },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        Icon(Icons.Filled.Settings, contentDescription = "Configurações")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.showAddSheet() }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add")
+                Icon(Icons.Filled.Add, contentDescription = "Adicionar")
             }
         },
         modifier = modifier
@@ -61,7 +61,7 @@ fun AppBlockScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No app rules yet.\nTap + to add one.",
+                    text = "Nenhum bloqueio criado.\nToque em + para começar.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -70,11 +70,11 @@ fun AppBlockScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding)
             ) {
-                items(rules, key = { it.rule.id }) { uiState ->
+                items(rules, key = { it.ruleWithApps.rule.id }) { uiState ->
                     AppRuleCard(
                         uiState = uiState,
-                        onToggle = { viewModel.toggleRule(uiState.rule) },
-                        onDelete = { viewModel.deleteRule(uiState.rule) }
+                        onToggle = { viewModel.toggleRule(uiState.ruleWithApps.rule) },
+                        onDelete = { viewModel.deleteRule(uiState.ruleWithApps.rule) }
                     )
                 }
             }
@@ -85,8 +85,8 @@ fun AppBlockScreen(
         AddAppRuleSheet(
             installedApps = installedApps,
             onDismiss = { viewModel.hideAddSheet() },
-            onSave = { packageName, appName, blockType, startHour, startMinute, endHour, endMinute, days, dailyLimit, isPasswordProtected, password ->
-                viewModel.addRule(packageName, appName, blockType, startHour, startMinute, endHour, endMinute, days, dailyLimit, isPasswordProtected, password)
+            onSave = { name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password ->
+                viewModel.addRule(name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password)
             }
         )
     }
@@ -94,8 +94,8 @@ fun AppBlockScreen(
     if (pendingAction != null) {
         val action = pendingAction!!
         PasswordEntryDialog(
-            title = "Password Required",
-            message = if (viewModel.isMasterPasswordEnabled()) "Enter rule password or master password" else "Enter rule password",
+            title = "Senha necessária",
+            message = if (viewModel.isMasterPasswordEnabled()) "Digite a senha do bloqueio ou a senha mestra" else "Digite a senha do bloqueio",
             onDismiss = { viewModel.dismissPendingAction() },
             onVerified = { viewModel.executePendingAction() },
             verifyPassword = { password -> viewModel.verifyPassword(password, action.rule) }

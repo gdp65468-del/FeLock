@@ -51,8 +51,8 @@ class CrashHandlerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val stackTrace = intent.getStringExtra(EXTRA_STACK_TRACE) ?: "No stack trace available"
-        val threadName = intent.getStringExtra(EXTRA_THREAD_NAME) ?: "Unknown"
+        val stackTrace = intent.getStringExtra(EXTRA_STACK_TRACE) ?: "Nenhum rastreamento de erro disponível"
+        val threadName = intent.getStringExtra(EXTRA_THREAD_NAME) ?: "Desconhecida"
 
         setContent {
             SelfLockTheme {
@@ -68,7 +68,7 @@ class CrashHandlerActivity : ComponentActivity() {
 
     private fun copyToClipboard(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("SelfLock Crash", text))
+        clipboard.setPrimaryClip(ClipData.newPlainText("Erro do SelfLock", text))
     }
 
     private fun restartApp() {
@@ -97,7 +97,7 @@ private fun CrashScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "SelfLock Crashed",
+                text = "Erro do SelfLock",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
@@ -105,7 +105,7 @@ private fun CrashScreen(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Thread: $threadName",
+                text = "Linha de execução: $threadName",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
@@ -117,10 +117,10 @@ private fun CrashScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(onClick = onCopy) {
-                    Text("Copy Stack Trace")
+                    Text("Copiar detalhes do erro")
                 }
                 OutlinedButton(onClick = onRestart) {
-                    Text("Restart App")
+                    Text("Reiniciar aplicativo")
                 }
             }
 

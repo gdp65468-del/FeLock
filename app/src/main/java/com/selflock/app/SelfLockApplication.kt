@@ -18,17 +18,17 @@ class SelfLockApplication : Application() {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
                 val stackTrace = buildString {
-                    appendLine("Exception: ${throwable.javaClass.name}")
-                    appendLine("Message: ${throwable.message}")
+                    appendLine("Exceção: ${throwable.javaClass.name}")
+                    appendLine("Mensagem: ${throwable.message}")
                     appendLine()
-                    appendLine("--- Stack Trace ---")
+                    appendLine("--- Rastreamento do erro ---")
                     throwable.stackTraceToString().lines().forEach { appendLine(it) }
 
                     var cause = throwable.cause
                     while (cause != null) {
                         appendLine()
-                        appendLine("--- Caused by: ${cause.javaClass.name} ---")
-                        appendLine("Message: ${cause.message}")
+                        appendLine("--- Causado por: ${cause.javaClass.name} ---")
+                        appendLine("Mensagem: ${cause.message}")
                         cause.stackTraceToString().lines().forEach { appendLine(it) }
                         cause = cause.cause
                     }

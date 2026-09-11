@@ -4,14 +4,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -32,87 +35,77 @@ import kotlinx.coroutines.delay
 @Composable
 fun BlockOverlayContent(
     appName: String,
+    packageName: String,
+    ruleName: String,
     remainingMinutes: Long,
-    packageName: String? = null,
-    domain: String? = null
+    progressAppName: String,
+    progressSeconds: Long,
+    goalMinutes: Int,
+    rewardsUsed: Int,
+    maxRewards: Int,
+    contingencyUsed: Boolean,
+    contingencyAvailableAt: Long,
+    contingencyMinutes: Int,
+    onOpenProgressApp: () -> Unit,
+    onRelease: () -> Unit
 ) {
-    var currentMinutes by remember { mutableLongStateOf(remainingMinutes) }
-
-    LaunchedEffect(remainingMinutes) {
-        currentMinutes = remainingMinutes
-        while (currentMinutes > 0) {
-            delay(60000)
-            currentMinutes--
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1000)
+            now = System.currentTimeMillis()
         }
     }
+    val goalSeconds = goalMinutes * 60L
+    val remainingGoalMinutes = ((goalSeconds - progressSeconds).coerceAtLeast(0) + 59) / 60
+    val contingencyAvailable = now >= contingencyAvailableAt
+    val contingencyWaitMinutes = ((contingencyAvailableAt - now).coerceAtLeast(0) + 59_999) / 60_000
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.surfaceContainerHighest
-    ) {
+    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
         Column(
             modifier = Modifier.fillMaxSize().padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (!packageName.isNullOrEmpty()) {
-                AppIcon(
-                    packageName = packageName,
-                    modifier = Modifier.size(64.dp),
-                    contentDescription = appName
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            } else if (!domain.isNullOrEmpty()) {
-                FaviconImage(
-                    domain = domain,
-                    size = 64.dp
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            Icon(
-                imageVector = Icons.Filled.Lock,
-                contentDescription = null,
-                modifier = Modifier.size(96.dp),
-                tint = MaterialTheme.colorScheme.error
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = "$appName is blocked",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-
+            AppIcon(packageName = packageName, modifier = Modifier.size(64.dp), contentDescription = appName)
             Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Schedule Block Active",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
+            Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = Formatters.formatCountdown(currentMinutes),
-                style = MaterialTheme.typography.displaySmall,
-                fontFamily = FontFamily.Monospace,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(48.dp))
-
-            Card(
-                modifier = Modifier.padding(horizontal = 32.dp)
-            ) {
+            Text("$appName está bloqueado", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(ruleName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(Formatters.formatCountdown(remainingMinutes), style = MaterialTheme.typography.bodyLarge)
+            Spacer(modifier = Modifier.height(24.dp))
+            if (rewardsUsed < maxRewards) Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Conquiste tempo livre", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Use $progressAppName por mais $remainingGoalMinutes minutos.")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(
+                        progress = { if (goalSeconds > 0) (progressSeconds.toFloat() / goalSeconds).coerceIn(0f, 1f) else 0f },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = onOpenProgressApp, modifier = Modifier.fillMaxWidth()) {
+                        Text("Abrir $progressAppName")
+                    }
+                }
+            } else {
+                Text("Todas as $maxRewards recompensas deste bloqueio já foram usadas.", textAlign = TextAlign.Center)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            if (contingencyUsed) {
+                Text("A liberação alternativa deste bloqueio já foi usada.", textAlign = TextAlign.Center)
+            } else if (contingencyAvailable) {
+                OutlinedButton(onClick = onRelease, modifier = Modifier.fillMaxWidth()) {
+                    Text("Liberar por $contingencyMinutes minutos")
+                }
+            } else {
                 Text(
-                    text = "Stay focused! You've got this.",
-                    style = MaterialTheme.typography.bodyLarge,
+                    "Liberação alternativa disponível em ${Formatters.formatCountdown(contingencyWaitMinutes)}",
+                    style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(24.dp)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }

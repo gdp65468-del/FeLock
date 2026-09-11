@@ -2,11 +2,9 @@ package com.selflock.app.ui.screens.statistics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.selflock.app.data.local.entity.AggregatedUsage
 import com.selflock.app.data.local.entity.BlockEvent
-import com.selflock.app.data.repository.AppRuleRepository
+import com.selflock.app.data.repository.LockoutRepository
 import com.selflock.app.data.repository.UsageRepository
-import com.selflock.app.data.repository.WebsiteRuleRepository
 import com.selflock.app.domain.model.TargetType
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +30,6 @@ data class StatisticsUiState(
     val totalBlockedSeconds: Long = 0,
     val blockCount: Int = 0,
     val appUsage: List<UsageItem> = emptyList(),
-    val websiteUsage: List<UsageItem> = emptyList(),
     val blockEvents: List<BlockEvent> = emptyList(),
     val isLoading: Boolean = false
 )
@@ -40,8 +37,7 @@ data class StatisticsUiState(
 @HiltViewModel
 class StatisticsViewModel @Inject constructor(
     private val usageRepository: UsageRepository,
-    private val appRuleRepository: AppRuleRepository,
-    private val websiteRuleRepository: WebsiteRuleRepository
+    private val lockoutRepository: LockoutRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StatisticsUiState())
@@ -82,34 +78,19 @@ class StatisticsViewModel @Inject constructor(
             val aggregatedUsage = usageRepository.getAggregatedUsage(startDateStr, endDateStr)
             val blockEvents = usageRepository.getBlockEvents(startMillis, endMillis)
 
-            val appRules = appRuleRepository.getAllRules().first()
-            val websiteRules = websiteRuleRepository.getAllRules().first()
+            val lockoutRules = lockoutRepository.getAllRules().first()
 
             val maxSeconds = aggregatedUsage.maxOfOrNull { it.totalSeconds } ?: 1L
 
             val appUsage = aggregatedUsage
                 .filter { it.targetType == TargetType.APP }
                 .map { usage ->
-                    val rule = appRules.find { it.id == usage.targetId }
+                    val rule = lockoutRules.find { it.rule.id == usage.targetId }?.rule
                     UsageItem(
                         targetId = usage.targetId,
                         targetType = TargetType.APP,
-                        displayName = rule?.appName ?: "Unknown App",
-                        packageName = rule?.packageName,
-                        totalSeconds = usage.totalSeconds,
-                        percentage = if (maxSeconds > 0) usage.totalSeconds.toFloat() / maxSeconds else 0f
-                    )
-                }
-
-            val websiteUsage = aggregatedUsage
-                .filter { it.targetType == TargetType.WEBSITE }
-                .map { usage ->
-                    val rule = websiteRules.find { it.id == usage.targetId }
-                    UsageItem(
-                        targetId = usage.targetId,
-                        targetType = TargetType.WEBSITE,
-                        displayName = rule?.domain ?: "Unknown Website",
-                        packageName = null,
+                        displayName = rule?.progressAppName ?: "Aplicativo desconhecido",
+                        packageName = rule?.progressPackageName,
                         totalSeconds = usage.totalSeconds,
                         percentage = if (maxSeconds > 0) usage.totalSeconds.toFloat() / maxSeconds else 0f
                     )
@@ -121,7 +102,6 @@ class StatisticsViewModel @Inject constructor(
                 totalBlockedSeconds = totalBlocked,
                 blockCount = blockCount,
                 appUsage = appUsage,
-                websiteUsage = websiteUsage,
                 blockEvents = blockEvents,
                 isLoading = false
             )
