@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityServiceInfo
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
-import android.net.VpnService
 import android.os.Process
 import android.provider.Settings
 import android.view.accessibility.AccessibilityManager
@@ -38,11 +37,6 @@ object PermissionHelper {
         return notificationManager.areNotificationsEnabled()
     }
 
-    fun isVpnActive(context: Context): Boolean {
-        val vpnIntent = VpnService.prepare(context)
-        return vpnIntent == null
-    }
-
     fun isExactAlarmAllowed(context: Context): Boolean {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
         return alarmManager.canScheduleExactAlarms()
@@ -66,9 +60,6 @@ object PermissionHelper {
         Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
             putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
         }
-
-    fun getVpnSettingsIntent(): Intent =
-        Intent(Settings.ACTION_VPN_SETTINGS)
 
     fun getExactAlarmSettingsIntent(): Intent =
         Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)

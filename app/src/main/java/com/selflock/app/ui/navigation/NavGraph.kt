@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
@@ -24,12 +23,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.selflock.app.ui.screens.app.AppBlockScreen
 import com.selflock.app.ui.screens.settings.SettingsSheet
 import com.selflock.app.ui.screens.statistics.StatisticsScreen
-import com.selflock.app.ui.screens.website.WebsiteBlockScreen
 
 data class Screen(val title: String, val icon: ImageVector)
 
 val screens = listOf(
-    Screen("Websites", Icons.Filled.Language),
     Screen("Apps", Icons.Filled.Apps),
     Screen("Stats", Icons.Filled.BarChart)
 )
@@ -56,15 +53,11 @@ fun MainNavGraph() {
         }
     ) { paddingValues ->
         when (selectedIndex) {
-            0 -> WebsiteBlockScreen(
+            0 -> AppBlockScreen(
                 modifier = Modifier.padding(paddingValues),
                 onOpenSettings = { showSettings = true }
             )
-            1 -> AppBlockScreen(
-                modifier = Modifier.padding(paddingValues),
-                onOpenSettings = { showSettings = true }
-            )
-            2 -> StatisticsScreen(
+            1 -> StatisticsScreen(
                 modifier = Modifier.padding(paddingValues),
                 onOpenSettings = { showSettings = true }
             )
