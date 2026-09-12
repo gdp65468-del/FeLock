@@ -31,15 +31,15 @@ fun DisablePasswordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Disable Master Password") },
+        title = { Text("Desativar senha mestra") },
         text = {
             Column {
-                Text("Enter your current password to disable master password protection.")
+                Text("Digite sua senha atual para desativar a proteção por senha mestra.")
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; error = null },
-                    label = { Text("Current password") },
+                    label = { Text("Senha atual") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     isError = error != null,
@@ -57,19 +57,19 @@ fun DisablePasswordDialog(
                             onVerified()
                             onDismiss()
                         } else {
-                            error = "Incorrect password"
+                            error = "Senha incorreta"
                         }
                         isVerifying = false
                     }
                 },
                 enabled = !isVerifying && password.isNotEmpty()
             ) {
-                Text("Disable")
+                Text("Desativar")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancelar")
             }
         }
     )

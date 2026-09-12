@@ -77,7 +77,7 @@ fun LockScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "SelfLock is locked",
+            text = "O SelfLock está bloqueado",
             style = MaterialTheme.typography.headlineMedium
         )
 
@@ -86,7 +86,7 @@ fun LockScreen(
         OutlinedTextField(
             value = password,
             onValueChange = viewModel::onPasswordChange,
-            label = { Text("Password") },
+            label = { Text("Senha") },
             singleLine = true,
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
@@ -120,14 +120,14 @@ fun LockScreen(
                     strokeWidth = 2.dp
                 )
             } else {
-                Text("Unlock")
+                Text("Desbloquear")
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         TextButton(onClick = { showForgotDialog = true }) {
-            Text("Forgot password?")
+            Text("Esqueceu a senha?")
         }
     }
     }
@@ -162,33 +162,33 @@ private fun ForgotPasswordDialog(
         ForgotStage.Confirm -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Forgot password?") },
+                title = { Text("Esqueceu a senha?") },
                 text = {
                     if (recoveryEmail != null && accountOnDevice) {
-                        Text("Verify with the recovery account $recoveryEmail to set a new master password.")
+                        Text("Confirme com a conta de recuperação $recoveryEmail para definir uma nova senha mestra.")
                     } else if (recoveryEmail != null) {
-                        Text("The recovery account $recoveryEmail is not signed in on this device. Sign it in via Android settings to recover, or reset the app.")
+                        Text("A conta de recuperação $recoveryEmail não está conectada neste dispositivo. Conecte-a nas Configurações do Android para recuperar o acesso ou redefina o aplicativo.")
                     } else {
-                        Text("No recovery account was set during onboarding. You can only reset the app, which clears all rules, settings, and the master password.")
+                        Text("Nenhuma conta de recuperação foi definida na configuração inicial. Você só pode redefinir o aplicativo, o que apaga todas as regras, configurações e a senha mestra.")
                     }
                 },
                 confirmButton = {
                     when {
                         recoveryEmail != null && accountOnDevice -> {
                             TextButton(onClick = { stage = ForgotStage.NewPassword }) {
-                                Text("Use $recoveryEmail")
+                                Text("Usar $recoveryEmail")
                             }
                         }
                         else -> {
                             TextButton(onClick = onResetApp) {
-                                Text("Reset App")
+                                Text("Redefinir aplicativo")
                             }
                         }
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text("Cancelar")
                     }
                 }
             )
@@ -197,13 +197,13 @@ private fun ForgotPasswordDialog(
         ForgotStage.NewPassword -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Set new master password") },
+                title = { Text("Definir nova senha mestra") },
                 text = {
                     Column {
                         OutlinedTextField(
                             value = newPassword,
                             onValueChange = { newPassword = it; resetError = null },
-                            label = { Text("New password") },
+                            label = { Text("Nova senha") },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             isError = resetError != null,
@@ -213,7 +213,7 @@ private fun ForgotPasswordDialog(
                         OutlinedTextField(
                             value = confirmPassword,
                             onValueChange = { confirmPassword = it; resetError = null },
-                            label = { Text("Confirm password") },
+                            label = { Text("Confirmar senha") },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             isError = resetError != null
@@ -226,10 +226,10 @@ private fun ForgotPasswordDialog(
                             if (isSaving) return@TextButton
                             when {
                                 newPassword.length < 4 -> {
-                                    resetError = "Password must be at least 4 characters"
+                                    resetError = "A senha deve ter pelo menos 4 caracteres"
                                 }
                                 newPassword != confirmPassword -> {
-                                    resetError = "Passwords do not match"
+                                    resetError = "As senhas não coincidem"
                                 }
                                 else -> {
                                     isSaving = true
@@ -242,12 +242,12 @@ private fun ForgotPasswordDialog(
                         },
                         enabled = !isSaving && newPassword.isNotEmpty() && confirmPassword.isNotEmpty()
                     ) {
-                        Text("Save")
+                        Text("Salvar")
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text("Cancelar")
                     }
                 }
             )

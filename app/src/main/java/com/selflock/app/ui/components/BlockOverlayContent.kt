@@ -71,15 +71,15 @@ fun BlockOverlayContent(
             Spacer(modifier = Modifier.height(16.dp))
             Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(80.dp), tint = MaterialTheme.colorScheme.error)
             Spacer(modifier = Modifier.height(24.dp))
-            Text("$appName is blocked", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            Text("$appName está bloqueado", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(8.dp))
             Text(ruleName, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(Formatters.formatCountdown(remainingMinutes), style = MaterialTheme.typography.bodyLarge)
             Spacer(modifier = Modifier.height(24.dp))
             if (rewardsUsed < maxRewards) Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
-                    Text("Earn free time", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Use $progressAppName for $remainingGoalMinutes more minutes.")
+                    Text("Ganhe tempo livre", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Use $progressAppName por mais $remainingGoalMinutes minutos.")
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { if (goalSeconds > 0) (progressSeconds.toFloat() / goalSeconds).coerceIn(0f, 1f) else 0f },
@@ -87,22 +87,22 @@ fun BlockOverlayContent(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Button(onClick = onOpenProgressApp, modifier = Modifier.fillMaxWidth()) {
-                        Text("Open $progressAppName")
+                        Text("Abrir $progressAppName")
                     }
                 }
             } else {
-                Text("All $maxRewards rewards have been used for this lockout.", textAlign = TextAlign.Center)
+                Text("Todas as $maxRewards recompensas deste bloqueio foram usadas.", textAlign = TextAlign.Center)
             }
             Spacer(modifier = Modifier.height(16.dp))
             if (contingencyUsed) {
-                Text("Alternative release has already been used for this lockout.", textAlign = TextAlign.Center)
+                Text("A liberação alternativa deste bloqueio já foi usada.", textAlign = TextAlign.Center)
             } else if (contingencyAvailable) {
                 OutlinedButton(onClick = onRelease, modifier = Modifier.fillMaxWidth()) {
-                    Text("Release for $contingencyMinutes minutes")
+                    Text("Liberar por $contingencyMinutes minutos")
                 }
             } else {
                 Text(
-                    "Alternative release available in ${Formatters.formatCountdown(contingencyWaitMinutes)}",
+                    "Liberação alternativa disponível em ${Formatters.formatCountdown(contingencyWaitMinutes)}",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant

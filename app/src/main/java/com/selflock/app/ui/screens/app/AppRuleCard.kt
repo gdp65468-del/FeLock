@@ -37,6 +37,7 @@ fun AppRuleCard(
     val rule = uiState.ruleWithApps.rule
     val now = System.currentTimeMillis()
     val freeUntil = maxOf(uiState.rewardActiveUntil, uiState.contingencyActiveUntil)
+    val dayLabels = mapOf("MON" to "Seg", "TUE" to "Ter", "WED" to "Qua", "THU" to "Qui", "FRI" to "Sex", "SAT" to "Sáb", "SUN" to "Dom")
     Card(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -49,29 +50,29 @@ fun AppRuleCard(
                     Spacer(Modifier.size(12.dp))
                     Column {
                         Text(rule.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        Text("${uiState.ruleWithApps.allowedApps.size} allowed apps", style = MaterialTheme.typography.bodySmall)
+                        Text("${uiState.ruleWithApps.allowedApps.size} aplicativos permitidos", style = MaterialTheme.typography.bodySmall)
                     }
-                    if (rule.isPasswordProtected) Icon(Icons.Filled.Key, "Password protected", Modifier.padding(start = 8.dp).size(16.dp))
-                    if (uiState.isActive) Icon(Icons.Filled.Lock, "Active lockout", Modifier.padding(start = 8.dp).size(16.dp), tint = MaterialTheme.colorScheme.error)
+                    if (rule.isPasswordProtected) Icon(Icons.Filled.Key, "Protegido por senha", Modifier.padding(start = 8.dp).size(16.dp))
+                    if (uiState.isActive) Icon(Icons.Filled.Lock, "Bloqueio ativo", Modifier.padding(start = 8.dp).size(16.dp), tint = MaterialTheme.colorScheme.error)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (!uiState.isActive) IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Delete") }
+                    if (!uiState.isActive) IconButton(onClick = onDelete) { Icon(Icons.Filled.Delete, "Excluir") }
                     Switch(rule.isEnabled, { onToggle() }, enabled = !uiState.isActive)
                 }
             }
             Spacer(Modifier.height(10.dp))
             Text("${Formatters.formatTime(rule.scheduleStartHour, rule.scheduleStartMinute)} - ${Formatters.formatTime(rule.scheduleEndHour, rule.scheduleEndMinute)}")
-            Text(rule.getDaysList().joinToString(", "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(rule.getDaysList().joinToString(", ") { dayLabels[it] ?: it }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(Modifier.height(8.dp))
-            Text("${rule.goalMinutes}m in ${rule.progressAppName} earns ${rule.rewardMinutes}m free")
+            Text("${rule.goalMinutes} min em ${rule.progressAppName} rendem ${rule.rewardMinutes} min livres")
             val progress = (uiState.progressSeconds.toFloat() / (rule.goalMinutes * 60L)).coerceIn(0f, 1f)
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-            Text("Rewards: ${uiState.rewardsUsed}/${rule.maxRewards}", style = MaterialTheme.typography.bodySmall)
-            Text("Alternative release after ${rule.contingencyAfterMinutes / 60}h for ${rule.contingencyMinutes}m", style = MaterialTheme.typography.bodySmall)
+            Text("Recompensas: ${uiState.rewardsUsed}/${rule.maxRewards}", style = MaterialTheme.typography.bodySmall)
+            Text("Liberação alternativa após ${rule.contingencyAfterMinutes / 60} h por ${rule.contingencyMinutes} min", style = MaterialTheme.typography.bodySmall)
             if (uiState.isActive) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    if (freeUntil > now) "Free time active" else Formatters.formatCountdown(uiState.remainingMinutes),
+                    if (freeUntil > now) "Tempo livre ativo" else Formatters.formatCountdown(uiState.remainingMinutes),
                     color = if (freeUntil > now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )

@@ -51,7 +51,7 @@ class CrashHandlerActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val stackTrace = intent.getStringExtra(EXTRA_STACK_TRACE) ?: "No stack trace available"
+        val stackTrace = intent.getStringExtra(EXTRA_STACK_TRACE) ?: "Nenhum rastreamento de pilha disponível"
         val threadName = intent.getStringExtra(EXTRA_THREAD_NAME) ?: "Unknown"
 
         setContent {
@@ -68,7 +68,7 @@ class CrashHandlerActivity : ComponentActivity() {
 
     private fun copyToClipboard(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("SelfLock Crash", text))
+        clipboard.setPrimaryClip(ClipData.newPlainText("Falha do SelfLock", text))
     }
 
     private fun restartApp() {
@@ -97,7 +97,7 @@ private fun CrashScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "SelfLock Crashed",
+                text = "O SelfLock falhou",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
@@ -117,10 +117,10 @@ private fun CrashScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Button(onClick = onCopy) {
-                    Text("Copy Stack Trace")
+                    Text("Copiar rastreamento")
                 }
                 OutlinedButton(onClick = onRestart) {
-                    Text("Restart App")
+                    Text("Reiniciar aplicativo")
                 }
             }
 
