@@ -23,8 +23,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Test, lint, and build Debug APK
+        run: ./gradlew testDebugUnitTest lintDebug assembleDebug
 
       - name: Upload APK
         if: github.event_name != 'pull_request'
