@@ -102,7 +102,7 @@ fun AddAppRuleSheet(
             item {
                 OutlinedTextField(search, { search = it }, label = { Text("Buscar aplicativos") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
-            items(filteredApps.take(12), key = { it.packageName }) { app ->
+            items(filteredApps, key = { it.packageName }) { app ->
                 val selected = app.packageName in selectedPackages
                 ListItem(
                     leadingContent = { AppIcon(app.packageName, Modifier.size(36.dp), app.appName) },

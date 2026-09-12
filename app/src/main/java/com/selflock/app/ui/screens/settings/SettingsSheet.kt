@@ -123,7 +123,7 @@ fun SettingsSheet(
 
         ListItem(
             headlineContent = { Text("Versão") },
-            supportingContent = { Text("1.1.0") }
+            supportingContent = { Text("1.2.0") }
         )
     }
 

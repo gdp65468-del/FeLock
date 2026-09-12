@@ -21,8 +21,14 @@ class SelfLockAccessibilityService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event?.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
         val packageName = event.packageName?.toString() ?: return
+
+        startForegroundService(Intent(this, MonitoringService::class.java).apply {
+            action = MonitoringService.ACTION_FOREGROUND_CHANGED
+            putExtra(MonitoringService.EXTRA_FOREGROUND_PACKAGE, packageName)
+        })
         if (packageName == packageName()) return
 
         scope.launch {
@@ -34,6 +40,11 @@ class SelfLockAccessibilityService : AccessibilityService() {
                 launchBlockOverlay(packageName, appName, decision)
             }
         }
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        startForegroundService(Intent(this, MonitoringService::class.java))
     }
 
     private fun launchBlockOverlay(
