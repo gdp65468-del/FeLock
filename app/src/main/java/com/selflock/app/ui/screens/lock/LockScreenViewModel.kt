@@ -44,7 +44,7 @@ class LockScreenViewModel @Inject constructor(
                 AppLockState.isUnlocked = true
                 _unlocked.value = true
             } else {
-                _error.value = "Incorrect password"
+                _error.value = "Senha incorreta"
             }
             _isVerifying.value = false
         }

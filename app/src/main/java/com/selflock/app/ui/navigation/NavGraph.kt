@@ -27,8 +27,8 @@ import com.selflock.app.ui.screens.statistics.StatisticsScreen
 data class Screen(val title: String, val icon: ImageVector)
 
 val screens = listOf(
-    Screen("Apps", Icons.Filled.Apps),
-    Screen("Stats", Icons.Filled.BarChart)
+    Screen("Aplicativos", Icons.Filled.Apps),
+    Screen("Estatísticas", Icons.Filled.BarChart)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
