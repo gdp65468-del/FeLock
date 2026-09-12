@@ -73,17 +73,18 @@ fun AddAppRuleSheet(
     val progressApp = installedApps.firstOrNull { it.packageName == progressPackage }
     val filteredApps = installedApps.filter { it.appName.contains(search, true) || it.packageName.contains(search, true) }
     val days = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+    val dayLabels = mapOf("MON" to "S", "TUE" to "T", "WED" to "Q", "THU" to "Q", "FRI" to "S", "SAT" to "S", "SUN" to "D")
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Create lockout", style = MaterialTheme.typography.headlineSmall) }
+            item { Text("Criar bloqueio", style = MaterialTheme.typography.headlineSmall) }
             item {
-                OutlinedTextField(name, { name = it }, label = { Text("Lockout name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(name, { name = it }, label = { Text("Nome do bloqueio") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { showStart = true }) { Text("Start: %02d:%02d".format(start.hour, start.minute)) }
-                    TextButton(onClick = { showEnd = true }) { Text("End: %02d:%02d".format(end.hour, end.minute)) }
+                    TextButton(onClick = { showStart = true }) { Text("Início: %02d:%02d".format(start.hour, start.minute)) }
+                    TextButton(onClick = { showEnd = true }) { Text("Fim: %02d:%02d".format(end.hour, end.minute)) }
                 }
             }
             item {
@@ -92,14 +93,14 @@ fun AddAppRuleSheet(
                         FilterChip(
                             selected = day in selectedDays,
                             onClick = { selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day },
-                            label = { Text(day.take(1)) }
+                            label = { Text(dayLabels.getValue(day)) }
                         )
                     }
                 }
             }
-            item { Text("Allowed apps", style = MaterialTheme.typography.titleMedium) }
+            item { Text("Aplicativos permitidos", style = MaterialTheme.typography.titleMedium) }
             item {
-                OutlinedTextField(search, { search = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(search, { search = it }, label = { Text("Buscar aplicativos") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
             items(filteredApps.take(12), key = { it.packageName }) { app ->
                 val selected = app.packageName in selectedPackages
@@ -114,7 +115,7 @@ fun AddAppRuleSheet(
                 )
             }
             if (selectedApps.isNotEmpty()) {
-                item { Text("Progress app", style = MaterialTheme.typography.titleMedium) }
+                item { Text("Aplicativo de progresso", style = MaterialTheme.typography.titleMedium) }
                 items(selectedApps, key = { "progress-${it.packageName}" }) { app ->
                     FilterChip(
                         selected = progressPackage == app.packageName,
@@ -123,16 +124,16 @@ fun AddAppRuleSheet(
                     )
                 }
             }
-            item { NumberField(goal, { goal = it }, "Minutes required in progress app") }
-            item { NumberField(reward, { reward = it }, "Free-time reward (minutes)") }
-            item { NumberField(maxRewards, { maxRewards = it }, "Maximum rewards") }
-            item { NumberField(contingencyAfter, { contingencyAfter = it }, "Alternative release after (hours)") }
-            item { NumberField(contingencyDuration, { contingencyDuration = it }, "Alternative release duration (minutes)") }
+            item { NumberField(goal, { goal = it }, "Minutos necessários no aplicativo de progresso") }
+            item { NumberField(reward, { reward = it }, "Recompensa de tempo livre (minutos)") }
+            item { NumberField(maxRewards, { maxRewards = it }, "Máximo de recompensas") }
+            item { NumberField(contingencyAfter, { contingencyAfter = it }, "Liberação alternativa após (horas)") }
+            item { NumberField(contingencyDuration, { contingencyDuration = it }, "Duração da liberação alternativa (minutos)") }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Block Settings")
-                        Text("Prevent opening Android Settings during lockout", style = MaterialTheme.typography.bodySmall)
+                        Text("Bloquear Configurações")
+                        Text("Impedir a abertura das Configurações do Android durante o bloqueio", style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(blockSettings, { blockSettings = it })
                 }
@@ -154,7 +155,7 @@ fun AddAppRuleSheet(
                 Button(
                     onClick = {
                         if (passwordProtected && (password.length < 4 || password != confirmPassword)) {
-                            passwordError = if (password.length < 4) "Password must be at least 4 characters" else "Passwords do not match"
+                            passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
                         } else {
                             onSave(
                                 name, selectedApps, progressApp!!, start.hour, start.minute, end.hour, end.minute,
@@ -166,9 +167,9 @@ fun AddAppRuleSheet(
                     },
                     enabled = valid,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Save lockout") }
+                ) { Text("Salvar bloqueio") }
             }
-            item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") } }
+            item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") } }
             item { Spacer(Modifier.height(20.dp)) }
         }
     }
@@ -195,7 +196,7 @@ private fun TimePickerDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Uni
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
         text = { TimePicker(state = state) }
     )
 }

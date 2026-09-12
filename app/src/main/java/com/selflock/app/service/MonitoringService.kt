@@ -75,7 +75,7 @@ class MonitoringService : Service() {
         if (decision.isBlocked) {
             val appName = runCatching {
                 packageManager.getApplicationLabel(packageManager.getApplicationInfo(foregroundPackage, 0)).toString()
-            }.getOrDefault("App")
+            }.getOrDefault("Aplicativo")
             launchBlockOverlay(foregroundPackage, appName, decision)
         } else {
             val powerManager = getSystemService(PowerManager::class.java)

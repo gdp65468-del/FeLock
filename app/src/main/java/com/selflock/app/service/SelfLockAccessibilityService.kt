@@ -30,7 +30,7 @@ class SelfLockAccessibilityService : AccessibilityService() {
             if (decision.isBlocked) {
                 val appName = runCatching {
                     packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
-                }.getOrDefault("App")
+                }.getOrDefault("Aplicativo")
                 launchBlockOverlay(packageName, appName, decision)
             }
         }
