@@ -63,7 +63,7 @@ class BlockOverlayActivity : ComponentActivity() {
         setContent {
             SelfLockTheme {
                 BlockOverlayContent(
-                    appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "App",
+                    appName = intent.getStringExtra(EXTRA_APP_NAME) ?: "Aplicativo",
                     packageName = blockedPackage,
                     ruleName = intent.getStringExtra(EXTRA_RULE_NAME).orEmpty(),
                     remainingMinutes = intent.getLongExtra(EXTRA_REMAINING_MINUTES, 0),

@@ -35,22 +35,23 @@ fun AppBlockScreen(
     val rules by viewModel.rules.collectAsState()
     val installedApps by viewModel.installedApps.collectAsState()
     val showAddSheet by viewModel.showAddSheet.collectAsState()
+    val editingRule by viewModel.editingRule.collectAsState()
     val pendingAction by viewModel.pendingAction.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Lockouts") },
+                title = { Text("Bloqueios") },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        Icon(Icons.Filled.Settings, contentDescription = "Configurações")
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { viewModel.showAddSheet() }) {
-                Icon(Icons.Filled.Add, contentDescription = "Add")
+                Icon(Icons.Filled.Add, contentDescription = "Adicionar")
             }
         },
         modifier = modifier
@@ -61,7 +62,7 @@ fun AppBlockScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No lockouts yet.\nTap + to create one.",
+                    text = "Nenhum bloqueio criado.\nToque em + para criar um.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -74,11 +75,25 @@ fun AppBlockScreen(
                     AppRuleCard(
                         uiState = uiState,
                         onToggle = { viewModel.toggleRule(uiState.ruleWithApps.rule) },
+                        onEdit = { viewModel.editRule(uiState.ruleWithApps) },
+                        onDuplicate = { viewModel.duplicateRule(uiState.ruleWithApps) },
                         onDelete = { viewModel.deleteRule(uiState.ruleWithApps.rule) }
                     )
                 }
             }
         }
+    }
+
+    if (editingRule != null) {
+        val original = editingRule!!
+        AddAppRuleSheet(
+            installedApps = installedApps,
+            initialRule = original,
+            onDismiss = { viewModel.hideEditSheet() },
+            onSave = { name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password ->
+                viewModel.updateRule(original, name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password)
+            }
+        )
     }
 
     if (showAddSheet) {
@@ -94,8 +109,8 @@ fun AppBlockScreen(
     if (pendingAction != null) {
         val action = pendingAction!!
         PasswordEntryDialog(
-            title = "Password Required",
-            message = if (viewModel.isMasterPasswordEnabled()) "Enter rule password or master password" else "Enter rule password",
+            title = "Senha necessária",
+            message = if (viewModel.isMasterPasswordEnabled()) "Digite a senha da regra ou a senha mestra" else "Digite a senha da regra",
             onDismiss = { viewModel.dismissPendingAction() },
             onVerified = { viewModel.executePendingAction() },
             verifyPassword = { password -> viewModel.verifyPassword(password, action.rule) }

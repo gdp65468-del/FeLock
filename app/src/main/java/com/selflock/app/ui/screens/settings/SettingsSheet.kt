@@ -50,55 +50,55 @@ fun SettingsSheet(
             .verticalScroll(rememberScrollState())
     ) {
         Text(
-            "Permissions Status",
+            "Status das permissões",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         PermissionRow(
-            name = "Accessibility Service",
+            name = "Serviço de acessibilidade",
             granted = permissions.accessibility,
             onFix = { context.startActivity(PermissionHelper.getAccessibilitySettingsIntent()) }
         )
         PermissionRow(
-            name = "Usage Access",
+            name = "Acesso ao uso",
             granted = permissions.usageAccess,
             onFix = { context.startActivity(PermissionHelper.getUsageAccessSettingsIntent()) }
         )
         PermissionRow(
-            name = "Display Over Other Apps",
+            name = "Exibir sobre outros aplicativos",
             granted = permissions.overlay,
             onFix = { context.startActivity(PermissionHelper.getOverlaySettingsIntent(context)) }
         )
         PermissionRow(
-            name = "Notifications",
+            name = "Notificações",
             granted = permissions.notifications,
             onFix = { context.startActivity(PermissionHelper.getNotificationSettingsIntent(context)) }
         )
         PermissionRow(
-            name = "Exact Alarms",
+            name = "Alarmes exatos",
             granted = permissions.exactAlarms,
             onFix = { context.startActivity(PermissionHelper.getExactAlarmSettingsIntent()) }
         )
         PermissionRow(
-            name = "Battery Optimization",
+            name = "Otimização da bateria",
             granted = permissions.batteryOptimization,
-            grantedLabel = "Disabled",
-            deniedLabel = "Enabled",
+            grantedLabel = "Desativada",
+            deniedLabel = "Ativada",
             onFix = { context.startActivity(PermissionHelper.getBatteryOptimizationSettingsIntent(context)) }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            "Security",
+            "Segurança",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         ListItem(
-            headlineContent = { Text("Master Password") },
-            supportingContent = { Text("Require password to open the app") },
+            headlineContent = { Text("Senha mestra") },
+            supportingContent = { Text("Exigir senha para abrir o aplicativo") },
             trailingContent = {
                 Switch(
                     checked = masterPasswordEnabled,
@@ -116,14 +116,14 @@ fun SettingsSheet(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            "About",
+            "Sobre",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         ListItem(
-            headlineContent = { Text("Version") },
-            supportingContent = { Text("1.0.0") }
+            headlineContent = { Text("Versão") },
+            supportingContent = { Text("1.2.0") }
         )
     }
 
@@ -153,8 +153,8 @@ fun SettingsSheet(
 private fun PermissionRow(
     name: String,
     granted: Boolean,
-    grantedLabel: String = "Granted",
-    deniedLabel: String = "Denied",
+    grantedLabel: String = "Concedida",
+    deniedLabel: String = "Negada",
     onFix: () -> Unit
 ) {
     ListItem(
@@ -175,7 +175,7 @@ private fun PermissionRow(
         trailingContent = {
             if (!granted) {
                 FilledTonalButton(onClick = onFix) {
-                    Text("Fix")
+                    Text("Corrigir")
                 }
             }
         }

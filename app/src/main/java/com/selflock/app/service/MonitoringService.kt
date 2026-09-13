@@ -7,9 +7,14 @@ import android.app.PendingIntent
 import android.app.Service
 import android.app.KeyguardManager
 import android.app.usage.UsageStatsManager
+import android.app.usage.UsageEvents
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.selflock.app.BlockOverlayActivity
 import com.selflock.app.MainActivity
@@ -23,6 +28,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -33,31 +40,47 @@ class MonitoringService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pollingJob: Job? = null
-    private var lastPollTime: Long = 0
+    private val observationMutex = Mutex()
+    private lateinit var timeAccumulator: ForegroundTimeAccumulator
+    private var lastUsageQueryTime = 0L
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                scope.launch { observeForeground(null) }
+            }
+        }
+    }
 
     companion object {
         const val CHANNEL_ID = "monitoring_service"
         const val NOTIFICATION_ID = 1002
-        private const val POLL_INTERVAL_MS = 5000L
-
+        private const val POLL_INTERVAL_MS = 1000L
+        const val ACTION_FOREGROUND_CHANGED = "com.selflock.app.FOREGROUND_CHANGED"
+        const val EXTRA_FOREGROUND_PACKAGE = "foreground_package"
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        timeAccumulator = ForegroundTimeAccumulator(SystemClock.elapsedRealtime())
+        lastUsageQueryTime = System.currentTimeMillis() - 60_000L
+        registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), Context.RECEIVER_NOT_EXPORTED)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = buildNotification()
         startForeground(NOTIFICATION_ID, notification)
         startPolling()
+        if (intent?.action == ACTION_FOREGROUND_CHANGED) {
+            val packageName = intent.getStringExtra(EXTRA_FOREGROUND_PACKAGE)
+            scope.launch { observeForeground(packageName) }
+        }
         return START_STICKY
     }
 
     private fun startPolling() {
-        pollingJob?.cancel()
+        if (pollingJob?.isActive == true) return
         pollingJob = scope.launch {
-            lastPollTime = System.currentTimeMillis()
             while (true) {
                 delay(POLL_INTERVAL_MS)
                 pollUsageStats()
@@ -66,23 +89,33 @@ class MonitoringService : Service() {
     }
 
     private suspend fun pollUsageStats() {
+        observationMutex.withLock {
+            observeForegroundLocked(readForegroundPackage())
+        }
+    }
+
+    private suspend fun observeForeground(packageName: String?) = observationMutex.withLock {
+        observeForegroundLocked(packageName)
+    }
+
+    private suspend fun observeForegroundLocked(packageName: String?) {
+        val nowElapsed = SystemClock.elapsedRealtime()
+        val powerManager = getSystemService(PowerManager::class.java)
+        val keyguardManager = getSystemService(KeyguardManager::class.java)
+        val interval = timeAccumulator.observe(
+            packageName,
+            nowElapsed,
+            powerManager.isInteractive && !keyguardManager.isDeviceLocked
+        )
+        if (interval != null) lockoutManager.recordProgress(interval.packageName, interval.seconds)
+        if (packageName == null || packageName == this.packageName) return
         val now = System.currentTimeMillis()
-        val elapsedSeconds = ((now - lastPollTime) / 1000).coerceAtMost(POLL_INTERVAL_MS / 1000)
-        lastPollTime = now
-        val foregroundPackage = getForegroundPackage() ?: return
-        if (foregroundPackage == packageName) return
-        val decision = lockoutManager.evaluate(foregroundPackage, now)
+        val decision = lockoutManager.evaluate(packageName, now)
         if (decision.isBlocked) {
             val appName = runCatching {
-                packageManager.getApplicationLabel(packageManager.getApplicationInfo(foregroundPackage, 0)).toString()
-            }.getOrDefault("App")
-            launchBlockOverlay(foregroundPackage, appName, decision)
-        } else {
-            val powerManager = getSystemService(PowerManager::class.java)
-            val keyguardManager = getSystemService(KeyguardManager::class.java)
-            if (powerManager.isInteractive && !keyguardManager.isDeviceLocked) {
-                lockoutManager.recordProgress(foregroundPackage, elapsedSeconds, now)
-            }
+                packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
+            }.getOrDefault("Aplicativo")
+            launchBlockOverlay(packageName, appName, decision)
         }
     }
 
@@ -111,13 +144,21 @@ class MonitoringService : Service() {
         })
     }
 
-    private fun getForegroundPackage(): String? {
-        val endTime = System.currentTimeMillis()
-        val startTime = endTime - 10000
-        val stats = usageStatsManager.queryUsageStats(
-            UsageStatsManager.INTERVAL_BEST, startTime, endTime
-        )
-        return stats?.maxByOrNull { it.lastTimeUsed }?.packageName
+    private fun readForegroundPackage(): String? {
+        val now = System.currentTimeMillis()
+        val events = usageStatsManager.queryEvents(lastUsageQueryTime, now)
+        lastUsageQueryTime = now
+        val event = UsageEvents.Event()
+        var currentPackage = timeAccumulator.currentPackage
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> currentPackage = event.packageName
+                UsageEvents.Event.ACTIVITY_PAUSED,
+                UsageEvents.Event.ACTIVITY_STOPPED -> if (currentPackage == event.packageName) currentPackage = null
+            }
+        }
+        return currentPackage
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -130,6 +171,7 @@ class MonitoringService : Service() {
 
     override fun onDestroy() {
         pollingJob?.cancel()
+        unregisterReceiver(screenReceiver)
         scope.cancel()
         super.onDestroy()
     }

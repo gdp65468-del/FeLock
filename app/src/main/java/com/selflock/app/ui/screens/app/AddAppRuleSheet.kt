@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.selflock.app.domain.usecase.InstalledApp
+import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.ui.components.AppIcon
 import com.selflock.app.ui.components.PasswordProtectionSection
 
@@ -43,6 +44,7 @@ import com.selflock.app.ui.components.PasswordProtectionSection
 @Composable
 fun AddAppRuleSheet(
     installedApps: List<InstalledApp>,
+    initialRule: LockoutRuleWithApps? = null,
     onDismiss: () -> Unit,
     onSave: (
         String, List<InstalledApp>, InstalledApp, Int, Int, Int, Int, String,
@@ -50,40 +52,41 @@ fun AddAppRuleSheet(
     ) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var name by remember { mutableStateOf("") }
-    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
-    var progressPackage by remember { mutableStateOf<String?>(null) }
-    var selectedDays by remember { mutableStateOf(setOf("MON", "TUE", "WED", "THU", "FRI")) }
+    var name by remember(initialRule) { mutableStateOf(initialRule?.rule?.name.orEmpty()) }
+    var selectedPackages by remember(initialRule) { mutableStateOf(initialRule?.allowedApps?.map { it.packageName }?.toSet().orEmpty()) }
+    var progressPackage by remember(initialRule) { mutableStateOf(initialRule?.rule?.progressPackageName) }
+    var selectedDays by remember(initialRule) { mutableStateOf(initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI")) }
     var search by remember { mutableStateOf("") }
-    var goal by remember { mutableStateOf("30") }
-    var reward by remember { mutableStateOf("15") }
-    var maxRewards by remember { mutableStateOf("3") }
-    var contingencyAfter by remember { mutableStateOf("2") }
-    var contingencyDuration by remember { mutableStateOf("10") }
-    var blockSettings by remember { mutableStateOf(true) }
-    var passwordProtected by remember { mutableStateOf(false) }
+    var goal by remember(initialRule) { mutableStateOf(initialRule?.rule?.goalMinutes?.toString() ?: "30") }
+    var reward by remember(initialRule) { mutableStateOf(initialRule?.rule?.rewardMinutes?.toString() ?: "15") }
+    var maxRewards by remember(initialRule) { mutableStateOf(initialRule?.rule?.maxRewards?.toString() ?: "3") }
+    var contingencyAfter by remember(initialRule) { mutableStateOf(initialRule?.rule?.contingencyAfterMinutes?.div(60)?.toString() ?: "2") }
+    var contingencyDuration by remember(initialRule) { mutableStateOf(initialRule?.rule?.contingencyMinutes?.toString() ?: "10") }
+    var blockSettings by remember(initialRule) { mutableStateOf(initialRule?.rule?.blockSettings ?: true) }
+    var passwordProtected by remember(initialRule) { mutableStateOf(initialRule?.rule?.isPasswordProtected ?: false) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf<String?>(null) }
-    val start = rememberTimePickerState(initialHour = 19, initialMinute = 0)
-    val end = rememberTimePickerState(initialHour = 23, initialMinute = 0)
+    val start = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleStartHour ?: 19, initialMinute = initialRule?.rule?.scheduleStartMinute ?: 0)
+    val end = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleEndHour ?: 23, initialMinute = initialRule?.rule?.scheduleEndMinute ?: 0)
     var showStart by remember { mutableStateOf(false) }
     var showEnd by remember { mutableStateOf(false) }
     val selectedApps = installedApps.filter { it.packageName in selectedPackages }
     val progressApp = installedApps.firstOrNull { it.packageName == progressPackage }
     val filteredApps = installedApps.filter { it.appName.contains(search, true) || it.packageName.contains(search, true) }
     val days = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+    val dayLabels = mapOf("MON" to "S", "TUE" to "T", "WED" to "Q", "THU" to "Q", "FRI" to "S", "SAT" to "S", "SUN" to "D")
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Create lockout", style = MaterialTheme.typography.headlineSmall) }
+            item { Text(if (initialRule == null) "Criar bloqueio" else "Editar bloqueio", style = MaterialTheme.typography.headlineSmall) }
             item {
-                OutlinedTextField(name, { name = it }, label = { Text("Lockout name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(name, { name = it }, label = { Text("Nome do bloqueio") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { showStart = true }) { Text("Start: %02d:%02d".format(start.hour, start.minute)) }
-                    TextButton(onClick = { showEnd = true }) { Text("End: %02d:%02d".format(end.hour, end.minute)) }
+                    TextButton(onClick = { showStart = true }) { Text("Início: %02d:%02d".format(start.hour, start.minute)) }
+                    TextButton(onClick = { showEnd = true }) { Text("Fim: %02d:%02d".format(end.hour, end.minute)) }
                 }
             }
             item {
@@ -92,16 +95,16 @@ fun AddAppRuleSheet(
                         FilterChip(
                             selected = day in selectedDays,
                             onClick = { selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day },
-                            label = { Text(day.take(1)) }
+                            label = { Text(dayLabels.getValue(day)) }
                         )
                     }
                 }
             }
-            item { Text("Allowed apps", style = MaterialTheme.typography.titleMedium) }
+            item { Text("Aplicativos permitidos", style = MaterialTheme.typography.titleMedium) }
             item {
-                OutlinedTextField(search, { search = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(search, { search = it }, label = { Text("Buscar aplicativos") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
-            items(filteredApps.take(12), key = { it.packageName }) { app ->
+            items(filteredApps, key = { it.packageName }) { app ->
                 val selected = app.packageName in selectedPackages
                 ListItem(
                     leadingContent = { AppIcon(app.packageName, Modifier.size(36.dp), app.appName) },
@@ -114,7 +117,7 @@ fun AddAppRuleSheet(
                 )
             }
             if (selectedApps.isNotEmpty()) {
-                item { Text("Progress app", style = MaterialTheme.typography.titleMedium) }
+                item { Text("Aplicativo de progresso", style = MaterialTheme.typography.titleMedium) }
                 items(selectedApps, key = { "progress-${it.packageName}" }) { app ->
                     FilterChip(
                         selected = progressPackage == app.packageName,
@@ -123,16 +126,16 @@ fun AddAppRuleSheet(
                     )
                 }
             }
-            item { NumberField(goal, { goal = it }, "Minutes required in progress app") }
-            item { NumberField(reward, { reward = it }, "Free-time reward (minutes)") }
-            item { NumberField(maxRewards, { maxRewards = it }, "Maximum rewards") }
-            item { NumberField(contingencyAfter, { contingencyAfter = it }, "Alternative release after (hours)") }
-            item { NumberField(contingencyDuration, { contingencyDuration = it }, "Alternative release duration (minutes)") }
+            item { NumberField(goal, { goal = it }, "Minutos necessários no aplicativo de progresso") }
+            item { NumberField(reward, { reward = it }, "Recompensa de tempo livre (minutos)") }
+            item { NumberField(maxRewards, { maxRewards = it }, "Máximo de recompensas") }
+            item { NumberField(contingencyAfter, { contingencyAfter = it }, "Liberação alternativa após (horas)") }
+            item { NumberField(contingencyDuration, { contingencyDuration = it }, "Duração da liberação alternativa (minutos)") }
             item {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Block Settings")
-                        Text("Prevent opening Android Settings during lockout", style = MaterialTheme.typography.bodySmall)
+                        Text("Bloquear Configurações")
+                        Text("Impedir a abertura das Configurações do Android durante o bloqueio", style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(blockSettings, { blockSettings = it })
                 }
@@ -153,22 +156,23 @@ fun AddAppRuleSheet(
                     listOf(goal, reward, maxRewards, contingencyAfter, contingencyDuration).all { (it.toIntOrNull() ?: 0) > 0 }
                 Button(
                     onClick = {
-                        if (passwordProtected && (password.length < 4 || password != confirmPassword)) {
-                            passwordError = if (password.length < 4) "Password must be at least 4 characters" else "Passwords do not match"
+                        val passwordRequired = initialRule?.rule?.isPasswordProtected != true
+                        if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
+                            passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
                         } else {
                             onSave(
                                 name, selectedApps, progressApp!!, start.hour, start.minute, end.hour, end.minute,
                                 selectedDays.joinToString(","), goal.toInt(), reward.toInt(), maxRewards.toInt(),
                                 contingencyAfter.toInt() * 60, contingencyDuration.toInt(), blockSettings,
-                                passwordProtected, password.takeIf { passwordProtected }
+                                passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }
                             )
                         }
                     },
                     enabled = valid,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Save lockout") }
+                ) { Text(if (initialRule == null) "Salvar bloqueio" else "Salvar alterações") }
             }
-            item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") } }
+            item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") } }
             item { Spacer(Modifier.height(20.dp)) }
         }
     }
@@ -195,7 +199,7 @@ private fun TimePickerDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Uni
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = { TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
         text = { TimePicker(state = state) }
     )
 }

@@ -30,7 +30,7 @@ data class AppRuleUiState(
     val contingencyActiveUntil: Long
 )
 
-enum class RuleAction { TOGGLE, DELETE }
+enum class RuleAction { TOGGLE, DELETE, EDIT }
 
 data class PendingAction(val rule: LockoutRule, val action: RuleAction)
 
@@ -49,6 +49,8 @@ class AppBlockViewModel @Inject constructor(
     val showAddSheet: StateFlow<Boolean> = _showAddSheet.asStateFlow()
     private val _pendingAction = MutableStateFlow<PendingAction?>(null)
     val pendingAction: StateFlow<PendingAction?> = _pendingAction.asStateFlow()
+    private val _editingRule = MutableStateFlow<LockoutRuleWithApps?>(null)
+    val editingRule: StateFlow<LockoutRuleWithApps?> = _editingRule.asStateFlow()
     private var ruleList: List<LockoutRuleWithApps> = emptyList()
 
     init {
@@ -86,6 +88,7 @@ class AppBlockViewModel @Inject constructor(
 
     fun showAddSheet() { _showAddSheet.value = true }
     fun hideAddSheet() { _showAddSheet.value = false }
+    fun hideEditSheet() { _editingRule.value = null }
 
     fun addRule(
         name: String,
@@ -151,6 +154,82 @@ class AppBlockViewModel @Inject constructor(
         }
     }
 
+    fun editRule(ruleWithApps: LockoutRuleWithApps) {
+        if (lockoutManager.isActive(ruleWithApps.rule)) return
+        if (ruleWithApps.rule.isPasswordProtected) {
+            _pendingAction.value = PendingAction(ruleWithApps.rule, RuleAction.EDIT)
+        } else {
+            _editingRule.value = ruleWithApps
+        }
+    }
+
+    fun updateRule(
+        original: LockoutRuleWithApps,
+        name: String,
+        allowedApps: List<InstalledApp>,
+        progressApp: InstalledApp,
+        startHour: Int,
+        startMinute: Int,
+        endHour: Int,
+        endMinute: Int,
+        days: String,
+        goalMinutes: Int,
+        rewardMinutes: Int,
+        maxRewards: Int,
+        contingencyAfterMinutes: Int,
+        contingencyMinutes: Int,
+        blockSettings: Boolean,
+        isPasswordProtected: Boolean,
+        password: String?
+    ) {
+        if (lockoutManager.isActive(original.rule)) return
+        viewModelScope.launch {
+            repository.update(
+                original.rule.copy(
+                    name = name.trim(),
+                    scheduleStartHour = startHour,
+                    scheduleStartMinute = startMinute,
+                    scheduleEndHour = endHour,
+                    scheduleEndMinute = endMinute,
+                    scheduleDays = days,
+                    progressPackageName = progressApp.packageName,
+                    progressAppName = progressApp.appName,
+                    goalMinutes = goalMinutes,
+                    rewardMinutes = rewardMinutes,
+                    maxRewards = maxRewards,
+                    contingencyAfterMinutes = contingencyAfterMinutes,
+                    contingencyMinutes = contingencyMinutes,
+                    blockSettings = blockSettings,
+                    isPasswordProtected = isPasswordProtected,
+                    passwordHash = when {
+                        !isPasswordProtected -> null
+                        password != null -> hashPassword(password)
+                        else -> original.rule.passwordHash
+                    },
+                    updatedAt = Instant.now().toEpochMilli()
+                ),
+                allowedApps.map { it.packageName to it.appName }
+            )
+            _editingRule.value = null
+        }
+    }
+
+    fun duplicateRule(ruleWithApps: LockoutRuleWithApps) {
+        viewModelScope.launch {
+            val now = Instant.now().toEpochMilli()
+            repository.insert(
+                ruleWithApps.rule.copy(
+                    id = 0,
+                    name = "${ruleWithApps.rule.name} (cópia)",
+                    isEnabled = false,
+                    createdAt = now,
+                    updatedAt = now
+                ),
+                ruleWithApps.allowedApps.map { it.packageName to it.appName }
+            )
+        }
+    }
+
     fun dismissPendingAction() { _pendingAction.value = null }
 
     suspend fun verifyPassword(password: String, rule: LockoutRule): Boolean {
@@ -164,6 +243,7 @@ class AppBlockViewModel @Inject constructor(
             when (pending.action) {
                 RuleAction.TOGGLE -> repository.update(pending.rule.copy(isEnabled = !pending.rule.isEnabled, updatedAt = Instant.now().toEpochMilli()))
                 RuleAction.DELETE -> repository.delete(pending.rule)
+                RuleAction.EDIT -> _editingRule.value = ruleList.firstOrNull { it.rule.id == pending.rule.id }
             }
             _pendingAction.value = null
         }
