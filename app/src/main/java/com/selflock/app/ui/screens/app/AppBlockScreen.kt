@@ -35,6 +35,7 @@ fun AppBlockScreen(
     val rules by viewModel.rules.collectAsState()
     val installedApps by viewModel.installedApps.collectAsState()
     val showAddSheet by viewModel.showAddSheet.collectAsState()
+    val editingRule by viewModel.editingRule.collectAsState()
     val pendingAction by viewModel.pendingAction.collectAsState()
 
     Scaffold(
@@ -74,11 +75,25 @@ fun AppBlockScreen(
                     AppRuleCard(
                         uiState = uiState,
                         onToggle = { viewModel.toggleRule(uiState.ruleWithApps.rule) },
+                        onEdit = { viewModel.editRule(uiState.ruleWithApps) },
+                        onDuplicate = { viewModel.duplicateRule(uiState.ruleWithApps) },
                         onDelete = { viewModel.deleteRule(uiState.ruleWithApps.rule) }
                     )
                 }
             }
         }
+    }
+
+    if (editingRule != null) {
+        val original = editingRule!!
+        AddAppRuleSheet(
+            installedApps = installedApps,
+            initialRule = original,
+            onDismiss = { viewModel.hideEditSheet() },
+            onSave = { name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password ->
+                viewModel.updateRule(original, name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password)
+            }
+        )
     }
 
     if (showAddSheet) {

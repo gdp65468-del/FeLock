@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.selflock.app.domain.usecase.InstalledApp
+import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.ui.components.AppIcon
 import com.selflock.app.ui.components.PasswordProtectionSection
 
@@ -43,6 +44,7 @@ import com.selflock.app.ui.components.PasswordProtectionSection
 @Composable
 fun AddAppRuleSheet(
     installedApps: List<InstalledApp>,
+    initialRule: LockoutRuleWithApps? = null,
     onDismiss: () -> Unit,
     onSave: (
         String, List<InstalledApp>, InstalledApp, Int, Int, Int, Int, String,
@@ -50,23 +52,23 @@ fun AddAppRuleSheet(
     ) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var name by remember { mutableStateOf("") }
-    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
-    var progressPackage by remember { mutableStateOf<String?>(null) }
-    var selectedDays by remember { mutableStateOf(setOf("MON", "TUE", "WED", "THU", "FRI")) }
+    var name by remember(initialRule) { mutableStateOf(initialRule?.rule?.name.orEmpty()) }
+    var selectedPackages by remember(initialRule) { mutableStateOf(initialRule?.allowedApps?.map { it.packageName }?.toSet().orEmpty()) }
+    var progressPackage by remember(initialRule) { mutableStateOf(initialRule?.rule?.progressPackageName) }
+    var selectedDays by remember(initialRule) { mutableStateOf(initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI")) }
     var search by remember { mutableStateOf("") }
-    var goal by remember { mutableStateOf("30") }
-    var reward by remember { mutableStateOf("15") }
-    var maxRewards by remember { mutableStateOf("3") }
-    var contingencyAfter by remember { mutableStateOf("2") }
-    var contingencyDuration by remember { mutableStateOf("10") }
-    var blockSettings by remember { mutableStateOf(true) }
-    var passwordProtected by remember { mutableStateOf(false) }
+    var goal by remember(initialRule) { mutableStateOf(initialRule?.rule?.goalMinutes?.toString() ?: "30") }
+    var reward by remember(initialRule) { mutableStateOf(initialRule?.rule?.rewardMinutes?.toString() ?: "15") }
+    var maxRewards by remember(initialRule) { mutableStateOf(initialRule?.rule?.maxRewards?.toString() ?: "3") }
+    var contingencyAfter by remember(initialRule) { mutableStateOf(initialRule?.rule?.contingencyAfterMinutes?.div(60)?.toString() ?: "2") }
+    var contingencyDuration by remember(initialRule) { mutableStateOf(initialRule?.rule?.contingencyMinutes?.toString() ?: "10") }
+    var blockSettings by remember(initialRule) { mutableStateOf(initialRule?.rule?.blockSettings ?: true) }
+    var passwordProtected by remember(initialRule) { mutableStateOf(initialRule?.rule?.isPasswordProtected ?: false) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf<String?>(null) }
-    val start = rememberTimePickerState(initialHour = 19, initialMinute = 0)
-    val end = rememberTimePickerState(initialHour = 23, initialMinute = 0)
+    val start = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleStartHour ?: 19, initialMinute = initialRule?.rule?.scheduleStartMinute ?: 0)
+    val end = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleEndHour ?: 23, initialMinute = initialRule?.rule?.scheduleEndMinute ?: 0)
     var showStart by remember { mutableStateOf(false) }
     var showEnd by remember { mutableStateOf(false) }
     val selectedApps = installedApps.filter { it.packageName in selectedPackages }
@@ -77,7 +79,7 @@ fun AddAppRuleSheet(
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Criar bloqueio", style = MaterialTheme.typography.headlineSmall) }
+            item { Text(if (initialRule == null) "Criar bloqueio" else "Editar bloqueio", style = MaterialTheme.typography.headlineSmall) }
             item {
                 OutlinedTextField(name, { name = it }, label = { Text("Nome do bloqueio") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
@@ -154,20 +156,21 @@ fun AddAppRuleSheet(
                     listOf(goal, reward, maxRewards, contingencyAfter, contingencyDuration).all { (it.toIntOrNull() ?: 0) > 0 }
                 Button(
                     onClick = {
-                        if (passwordProtected && (password.length < 4 || password != confirmPassword)) {
+                        val passwordRequired = initialRule?.rule?.isPasswordProtected != true
+                        if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
                             passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
                         } else {
                             onSave(
                                 name, selectedApps, progressApp!!, start.hour, start.minute, end.hour, end.minute,
                                 selectedDays.joinToString(","), goal.toInt(), reward.toInt(), maxRewards.toInt(),
                                 contingencyAfter.toInt() * 60, contingencyDuration.toInt(), blockSettings,
-                                passwordProtected, password.takeIf { passwordProtected }
+                                passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }
                             )
                         }
                     },
                     enabled = valid,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Salvar bloqueio") }
+                ) { Text(if (initialRule == null) "Salvar bloqueio" else "Salvar alterações") }
             }
             item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") } }
             item { Spacer(Modifier.height(20.dp)) }
