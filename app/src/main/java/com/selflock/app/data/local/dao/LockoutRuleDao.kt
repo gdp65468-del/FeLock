@@ -11,6 +11,10 @@ import com.selflock.app.data.local.entity.LockoutAllowedApp
 import com.selflock.app.data.local.entity.LockoutRule
 import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.data.local.entity.LockoutSession
+import com.selflock.app.data.local.entity.LockoutBlockedApp
+import com.selflock.app.data.local.entity.LockoutTaskApp
+import com.selflock.app.data.local.entity.LockoutReward
+import com.selflock.app.data.local.entity.LockoutRewardApp
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -32,6 +36,18 @@ interface LockoutRuleDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllowedApps(apps: List<LockoutAllowedApp>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBlockedApps(apps: List<LockoutBlockedApp>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTaskApps(apps: List<LockoutTaskApp>)
+
+    @Insert
+    suspend fun insertReward(reward: LockoutReward): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRewardApps(apps: List<LockoutRewardApp>)
+
     @Update
     suspend fun updateRule(rule: LockoutRule)
 
@@ -40,6 +56,18 @@ interface LockoutRuleDao {
 
     @Query("DELETE FROM lockout_allowed_apps WHERE ruleId = :ruleId")
     suspend fun deleteAllowedApps(ruleId: Long)
+
+    @Query("DELETE FROM lockout_blocked_apps WHERE ruleId = :ruleId")
+    suspend fun deleteBlockedApps(ruleId: Long)
+
+    @Query("DELETE FROM lockout_task_apps WHERE ruleId = :ruleId")
+    suspend fun deleteTaskApps(ruleId: Long)
+
+    @Query("DELETE FROM lockout_reward_apps WHERE rewardId IN (SELECT id FROM lockout_rewards WHERE ruleId = :ruleId)")
+    suspend fun deleteRewardApps(ruleId: Long)
+
+    @Query("DELETE FROM lockout_rewards WHERE ruleId = :ruleId")
+    suspend fun deleteRewards(ruleId: Long)
 
     @Query("SELECT * FROM lockout_sessions WHERE ruleId = :ruleId")
     suspend fun getSession(ruleId: Long): LockoutSession?

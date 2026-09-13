@@ -91,9 +91,7 @@ fun AppBlockScreen(
             initialRule = original,
             limitSchedulesToTwelveHours = viewModel.limitSchedulesToTwelveHours,
             onDismiss = { viewModel.hideEditSheet() },
-            onSave = { name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password ->
-                viewModel.updateRule(original, name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password)
-            }
+            onSave = { viewModel.updateRule(original, it) }
         )
     }
 
@@ -102,9 +100,7 @@ fun AppBlockScreen(
             installedApps = installedApps,
             limitSchedulesToTwelveHours = viewModel.limitSchedulesToTwelveHours,
             onDismiss = { viewModel.hideAddSheet() },
-            onSave = { name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password ->
-                viewModel.addRule(name, allowedApps, progressApp, startHour, startMinute, endHour, endMinute, days, goal, reward, maxRewards, contingencyAfter, contingencyMinutes, blockSettings, passwordProtected, password)
-            }
+            onSave = viewModel::addRule
         )
     }
 

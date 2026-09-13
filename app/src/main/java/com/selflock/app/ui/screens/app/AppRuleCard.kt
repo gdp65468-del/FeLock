@@ -55,7 +55,9 @@ fun AppRuleCard(
     val dayLabels = mapOf("MON" to "Seg", "TUE" to "Ter", "WED" to "Qua", "THU" to "Qui", "FRI" to "Sex", "SAT" to "Sáb", "SUN" to "Dom")
     val selectedDays = rule.getDaysList()
     val daysText = if (selectedDays.size == 7) "Todos os dias" else selectedDays.joinToString(", ") { dayLabels[it] ?: it }
-    val progress = (uiState.progressSeconds.toFloat() / (rule.goalMinutes * 60L)).coerceIn(0f, 1f)
+    val nextReward = uiState.ruleWithApps.rewards.sortedBy { it.reward.position }.getOrNull(uiState.rewardsUsed)
+    val requiredMinutes = nextReward?.reward?.requiredMinutes ?: rule.goalMinutes
+    val progress = (uiState.progressSeconds.toFloat() / (requiredMinutes * 60L)).coerceIn(0f, 1f)
     val progressMinutes = uiState.progressSeconds / 60
     var showMenu by remember { mutableStateOf(false) }
 
@@ -79,13 +81,16 @@ fun AppRuleCard(
                                 Icon(Icons.Filled.Key, "Protegido por senha", Modifier.padding(start = 8.dp).size(16.dp))
                             }
                         }
-                        Text("${uiState.ruleWithApps.allowedApps.size} aplicativos permitidos", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            if (rule.usesBlockedApps) "${uiState.ruleWithApps.blockedApps.size} apps bloqueados • ${uiState.ruleWithApps.taskApps.size} de tarefa" else "${uiState.ruleWithApps.allowedApps.size} aplicativos permitidos",
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            if (uiState.isActive) "Ativo agora" else if (rule.isEnabled) "Agendado" else "Pausado",
+                            if (uiState.endedByReward) "Encerrado" else if (uiState.isActive) "Ativo agora" else if (rule.isEnabled) "Agendado" else "Pausado",
                             style = MaterialTheme.typography.labelMedium,
                             color = if (uiState.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -133,28 +138,26 @@ fun AppRuleCard(
 
             Spacer(Modifier.height(12.dp))
             Text("Tempo livre", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text("A cada ${rule.goalMinutes} min de uso em ${rule.progressAppName}, libera ${rule.rewardMinutes} min")
+            val taskNames = if (rule.usesBlockedApps) uiState.ruleWithApps.taskApps.joinToString { it.appName } else rule.progressAppName
+            Text(if (nextReward != null) "$taskNames: $progressMinutes de ${nextReward.reward.requiredMinutes} minutos concluídos" else "Todas as recompensas foram concluídas")
             Spacer(Modifier.height(6.dp))
             LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
             Text(
-                "Progresso: $progressMinutes de ${rule.goalMinutes} min para a próxima recompensa",
+                "Progresso da tarefa",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(Modifier.height(12.dp))
             Text("Recompensa", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-            Text("${if (rule.maxRewards > 0) "Ativada" else "Desativada"} • ${uiState.rewardsUsed} de ${rule.maxRewards} usadas")
-            Text(
-                "Libera ${rule.contingencyMinutes} min de uso após ${rule.contingencyAfterMinutes / 60} h",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("${uiState.rewardsUsed} de ${if (rule.usesBlockedApps) uiState.ruleWithApps.rewards.size else rule.maxRewards} concluídas")
+            if (nextReward != null) Text("Próxima: ${nextReward.reward.name.ifBlank { "Recompensa ${nextReward.reward.position + 1}" }}", style = MaterialTheme.typography.bodySmall)
 
             Spacer(Modifier.height(12.dp))
             Text("Status", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
             Text(
                 when {
+                    uiState.endedByReward -> "Bloqueio encerrado por recompensa"
                     freeTimeActive -> "Tempo livre ativo"
                     uiState.isActive -> Formatters.formatCountdown(uiState.remainingMinutes)
                     rule.isEnabled -> "Aguardando o próximo horário"

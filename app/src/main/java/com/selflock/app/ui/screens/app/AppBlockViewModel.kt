@@ -28,7 +28,8 @@ data class AppRuleUiState(
     val progressSeconds: Long,
     val rewardsUsed: Int,
     val rewardActiveUntil: Long,
-    val contingencyActiveUntil: Long
+    val contingencyActiveUntil: Long,
+    val endedByReward: Boolean
 )
 
 enum class RuleAction { TOGGLE, DELETE, EDIT }
@@ -85,7 +86,8 @@ class AppBlockViewModel @Inject constructor(
                 progressSeconds = session.progressSeconds,
                 rewardsUsed = session.rewardsUsed,
                 rewardActiveUntil = session.rewardActiveUntil,
-                contingencyActiveUntil = session.contingencyActiveUntil
+                contingencyActiveUntil = session.contingencyActiveUntil,
+                endedByReward = session.endedByReward
             )
         }
     }
@@ -94,47 +96,35 @@ class AppBlockViewModel @Inject constructor(
     fun hideAddSheet() { _showAddSheet.value = false }
     fun hideEditSheet() { _editingRule.value = null }
 
-    fun addRule(
-        name: String,
-        allowedApps: List<InstalledApp>,
-        progressApp: InstalledApp,
-        startHour: Int,
-        startMinute: Int,
-        endHour: Int,
-        endMinute: Int,
-        days: String,
-        goalMinutes: Int,
-        rewardMinutes: Int,
-        maxRewards: Int,
-        contingencyAfterMinutes: Int,
-        contingencyMinutes: Int,
-        blockSettings: Boolean,
-        isPasswordProtected: Boolean,
-        password: String?
-    ) {
+    fun addRule(data: RuleEditorData) {
         viewModelScope.launch {
+            val firstTask = data.taskApps.first()
+            val firstReward = data.rewards.first()
             repository.insert(
                 LockoutRule(
-                    name = name.trim(),
-                    scheduleStartHour = startHour,
-                    scheduleStartMinute = startMinute,
-                    scheduleEndHour = endHour,
-                    scheduleEndMinute = endMinute,
-                    scheduleDays = days,
-                    progressPackageName = progressApp.packageName,
-                    progressAppName = progressApp.appName,
-                    goalMinutes = goalMinutes,
-                    rewardMinutes = rewardMinutes,
-                    maxRewards = maxRewards,
-                    contingencyAfterMinutes = contingencyAfterMinutes,
-                    contingencyMinutes = contingencyMinutes,
-                    blockSettings = blockSettings,
-                    isPasswordProtected = isPasswordProtected,
-                    passwordHash = if (isPasswordProtected && password != null) hashPassword(password) else null,
+                    name = data.name.trim(),
+                    scheduleStartHour = data.startHour,
+                    scheduleStartMinute = data.startMinute,
+                    scheduleEndHour = data.endHour,
+                    scheduleEndMinute = data.endMinute,
+                    scheduleDays = data.days,
+                    usesBlockedApps = true,
+                    progressPackageName = firstTask.packageName,
+                    progressAppName = firstTask.appName,
+                    goalMinutes = firstReward.requiredMinutes.toInt(),
+                    rewardMinutes = firstReward.durationMinutes.toIntOrNull() ?: 0,
+                    maxRewards = data.rewards.size,
+                    contingencyAfterMinutes = 120,
+                    contingencyMinutes = 10,
+                    blockSettings = data.blockSettings,
+                    isPasswordProtected = data.passwordProtected,
+                    passwordHash = if (data.passwordProtected && data.password != null) hashPassword(data.password) else null,
                     createdAt = Instant.now().toEpochMilli(),
                     updatedAt = Instant.now().toEpochMilli()
                 ),
-                allowedApps.map { it.packageName to it.appName }
+                data.blockedApps.map { it.packageName to it.appName },
+                data.taskApps.map { it.packageName to it.appName },
+                rewardInputs(data.rewards)
             )
             _showAddSheet.value = false
         }
@@ -167,52 +157,37 @@ class AppBlockViewModel @Inject constructor(
         }
     }
 
-    fun updateRule(
-        original: LockoutRuleWithApps,
-        name: String,
-        allowedApps: List<InstalledApp>,
-        progressApp: InstalledApp,
-        startHour: Int,
-        startMinute: Int,
-        endHour: Int,
-        endMinute: Int,
-        days: String,
-        goalMinutes: Int,
-        rewardMinutes: Int,
-        maxRewards: Int,
-        contingencyAfterMinutes: Int,
-        contingencyMinutes: Int,
-        blockSettings: Boolean,
-        isPasswordProtected: Boolean,
-        password: String?
-    ) {
+    fun updateRule(original: LockoutRuleWithApps, data: RuleEditorData) {
         if (lockoutManager.isActive(original.rule)) return
         viewModelScope.launch {
+            val firstTask = data.taskApps.first()
+            val firstReward = data.rewards.first()
             repository.update(
                 original.rule.copy(
-                    name = name.trim(),
-                    scheduleStartHour = startHour,
-                    scheduleStartMinute = startMinute,
-                    scheduleEndHour = endHour,
-                    scheduleEndMinute = endMinute,
-                    scheduleDays = days,
-                    progressPackageName = progressApp.packageName,
-                    progressAppName = progressApp.appName,
-                    goalMinutes = goalMinutes,
-                    rewardMinutes = rewardMinutes,
-                    maxRewards = maxRewards,
-                    contingencyAfterMinutes = contingencyAfterMinutes,
-                    contingencyMinutes = contingencyMinutes,
-                    blockSettings = blockSettings,
-                    isPasswordProtected = isPasswordProtected,
+                    name = data.name.trim(),
+                    scheduleStartHour = data.startHour,
+                    scheduleStartMinute = data.startMinute,
+                    scheduleEndHour = data.endHour,
+                    scheduleEndMinute = data.endMinute,
+                    scheduleDays = data.days,
+                    usesBlockedApps = true,
+                    progressPackageName = firstTask.packageName,
+                    progressAppName = firstTask.appName,
+                    goalMinutes = firstReward.requiredMinutes.toInt(),
+                    rewardMinutes = firstReward.durationMinutes.toIntOrNull() ?: 0,
+                    maxRewards = data.rewards.size,
+                    blockSettings = data.blockSettings,
+                    isPasswordProtected = data.passwordProtected,
                     passwordHash = when {
-                        !isPasswordProtected -> null
-                        password != null -> hashPassword(password)
+                        !data.passwordProtected -> null
+                        data.password != null -> hashPassword(data.password)
                         else -> original.rule.passwordHash
                     },
                     updatedAt = Instant.now().toEpochMilli()
                 ),
-                allowedApps.map { it.packageName to it.appName }
+                data.blockedApps.map { it.packageName to it.appName },
+                data.taskApps.map { it.packageName to it.appName },
+                rewardInputs(data.rewards)
             )
             _editingRule.value = null
         }
@@ -221,16 +196,19 @@ class AppBlockViewModel @Inject constructor(
     fun duplicateRule(ruleWithApps: LockoutRuleWithApps) {
         viewModelScope.launch {
             val now = Instant.now().toEpochMilli()
-            repository.insert(
-                ruleWithApps.rule.copy(
+            val copy = ruleWithApps.rule.copy(
                     id = 0,
                     name = "${ruleWithApps.rule.name} (cópia)",
                     isEnabled = false,
                     createdAt = now,
                     updatedAt = now
-                ),
-                ruleWithApps.allowedApps.map { it.packageName to it.appName }
-            )
+                )
+            if (copy.usesBlockedApps) repository.insert(
+                copy,
+                ruleWithApps.blockedApps.map { it.packageName to it.appName },
+                ruleWithApps.taskApps.map { it.packageName to it.appName },
+                ruleWithApps.rewards.sortedBy { it.reward.position }.map { LockoutRepository.RewardInput(it.reward, it.releasedApps.map { app -> app.packageName }) }
+            ) else repository.insert(copy, ruleWithApps.allowedApps.map { it.packageName to it.appName })
         }
     }
 
@@ -254,6 +232,33 @@ class AppBlockViewModel @Inject constructor(
     }
 
     fun isMasterPasswordEnabled(): Boolean = masterPasswordManager.isEnabled()
+
+    private fun rewardInputs(rewards: List<RewardDraft>) = rewards.mapIndexed { index, draft ->
+        val start = parseEditorTime(draft.startTime)
+        val end = parseEditorTime(draft.endTime)
+        LockoutRepository.RewardInput(
+            com.selflock.app.data.local.entity.LockoutReward(
+                ruleId = 0,
+                position = index,
+                name = draft.name.trim(),
+                requiredMinutes = draft.requiredMinutes.toInt(),
+                availabilityStartHour = start?.first.takeIf { draft.scheduled },
+                availabilityStartMinute = start?.second.takeIf { draft.scheduled },
+                availabilityEndHour = end?.first.takeIf { draft.scheduled },
+                availabilityEndMinute = end?.second.takeIf { draft.scheduled },
+                durationMinutes = draft.durationMinutes.toIntOrNull() ?: 0,
+                releaseType = draft.releaseType
+            ),
+            draft.releasedPackages.toList()
+        )
+    }
+
+    private fun parseEditorTime(value: String): Pair<Int, Int>? {
+        val parts = value.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+        val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        return hour to minute
+    }
 
     private suspend fun hashPassword(password: String): String = withContext(Dispatchers.Default) {
         val salt = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
