@@ -13,11 +13,15 @@ import com.selflock.app.data.local.entity.BlockEvent
 import com.selflock.app.data.local.entity.LockoutAllowedApp
 import com.selflock.app.data.local.entity.LockoutRule
 import com.selflock.app.data.local.entity.LockoutSession
+import com.selflock.app.data.local.entity.LockoutBlockedApp
+import com.selflock.app.data.local.entity.LockoutTaskApp
+import com.selflock.app.data.local.entity.LockoutReward
+import com.selflock.app.data.local.entity.LockoutRewardApp
 import com.selflock.app.data.local.entity.UsageLog
 
 @Database(
-    entities = [LockoutRule::class, LockoutAllowedApp::class, LockoutSession::class, UsageLog::class, BlockEvent::class],
-    version = 4,
+    entities = [LockoutRule::class, LockoutAllowedApp::class, LockoutBlockedApp::class, LockoutTaskApp::class, LockoutReward::class, LockoutRewardApp::class, LockoutSession::class, UsageLog::class, BlockEvent::class],
+    version = 5,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -52,6 +56,21 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DELETE FROM usage_logs")
                 db.execSQL("DELETE FROM block_events")
                 db.execSQL("DROP TABLE app_rules")
+            }
+        }
+
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE lockout_rules ADD COLUMN usesBlockedApps INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE lockout_sessions ADD COLUMN currentRewardPosition INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE lockout_sessions ADD COLUMN activeRewardId INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE lockout_sessions ADD COLUMN endedByReward INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("CREATE TABLE IF NOT EXISTS lockout_blocked_apps (ruleId INTEGER NOT NULL, packageName TEXT NOT NULL, appName TEXT NOT NULL, PRIMARY KEY(ruleId, packageName))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS lockout_task_apps (ruleId INTEGER NOT NULL, packageName TEXT NOT NULL, appName TEXT NOT NULL, PRIMARY KEY(ruleId, packageName))")
+                db.execSQL("CREATE TABLE IF NOT EXISTS lockout_rewards (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, ruleId INTEGER NOT NULL, position INTEGER NOT NULL, name TEXT NOT NULL, requiredMinutes INTEGER NOT NULL, availabilityStartHour INTEGER, availabilityStartMinute INTEGER, availabilityEndHour INTEGER, availabilityEndMinute INTEGER, durationMinutes INTEGER NOT NULL, releaseType TEXT NOT NULL)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS lockout_reward_apps (rewardId INTEGER NOT NULL, packageName TEXT NOT NULL, PRIMARY KEY(rewardId, packageName))")
+                db.execSQL("INSERT INTO lockout_task_apps (ruleId, packageName, appName) SELECT id, progressPackageName, progressAppName FROM lockout_rules")
+                db.execSQL("INSERT INTO lockout_rewards (ruleId, position, name, requiredMinutes, durationMinutes, releaseType) SELECT id, 0, 'Recompensa', goalMinutes, rewardMinutes, 'TEMPORARY' FROM lockout_rules")
             }
         }
     }

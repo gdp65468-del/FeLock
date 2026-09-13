@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ListItem
@@ -35,167 +35,187 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.domain.usecase.InstalledApp
-import com.selflock.app.ui.components.AppIcon
 import com.selflock.app.ui.components.PasswordProtectionSection
+import com.selflock.app.util.ScheduleDuration
+
+data class RewardDraft(
+    val name: String = "",
+    val requiredMinutes: String = "7",
+    val scheduled: Boolean = false,
+    val startTime: String = "07:00",
+    val endTime: String = "08:00",
+    val durationMinutes: String = "15",
+    val releaseType: String = "TEMPORARY",
+    val releasedPackages: Set<String> = emptySet()
+)
+
+data class RuleEditorData(
+    val name: String,
+    val blockedApps: List<InstalledApp>,
+    val taskApps: List<InstalledApp>,
+    val startHour: Int,
+    val startMinute: Int,
+    val endHour: Int,
+    val endMinute: Int,
+    val days: String,
+    val rewards: List<RewardDraft>,
+    val blockSettings: Boolean,
+    val passwordProtected: Boolean,
+    val password: String?
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAppRuleSheet(
     installedApps: List<InstalledApp>,
+    initialRule: LockoutRuleWithApps? = null,
+    limitSchedulesToTwelveHours: Boolean = true,
     onDismiss: () -> Unit,
-    onSave: (
-        String, List<InstalledApp>, InstalledApp, Int, Int, Int, Int, String,
-        Int, Int, Int, Int, Int, Boolean, Boolean, String?
-    ) -> Unit
+    onSave: (RuleEditorData) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var name by remember { mutableStateOf("") }
-    var selectedPackages by remember { mutableStateOf(setOf<String>()) }
-    var progressPackage by remember { mutableStateOf<String?>(null) }
-    var selectedDays by remember { mutableStateOf(setOf("MON", "TUE", "WED", "THU", "FRI")) }
+    var name by remember(initialRule) { mutableStateOf(initialRule?.rule?.name.orEmpty()) }
+    var blockedPackages by remember(initialRule) { mutableStateOf(initialRule?.blockedApps?.map { it.packageName }?.toSet().orEmpty()) }
+    var taskPackages by remember(initialRule) { mutableStateOf((initialRule?.taskApps?.map { it.packageName } ?: listOfNotNull(initialRule?.rule?.progressPackageName)).toSet()) }
+    var selectedDays by remember(initialRule) { mutableStateOf(initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI")) }
     var search by remember { mutableStateOf("") }
-    var goal by remember { mutableStateOf("30") }
-    var reward by remember { mutableStateOf("15") }
-    var maxRewards by remember { mutableStateOf("3") }
-    var contingencyAfter by remember { mutableStateOf("2") }
-    var contingencyDuration by remember { mutableStateOf("10") }
-    var blockSettings by remember { mutableStateOf(true) }
-    var passwordProtected by remember { mutableStateOf(false) }
+    var rewards by remember(initialRule) {
+        mutableStateOf(initialRule?.rewards?.sortedBy { it.reward.position }?.map { item ->
+            RewardDraft(
+                name = item.reward.name,
+                requiredMinutes = item.reward.requiredMinutes.toString(),
+                scheduled = item.reward.availabilityStartHour != null,
+                startTime = "%02d:%02d".format(item.reward.availabilityStartHour ?: 7, item.reward.availabilityStartMinute ?: 0),
+                endTime = "%02d:%02d".format(item.reward.availabilityEndHour ?: 8, item.reward.availabilityEndMinute ?: 0),
+                durationMinutes = item.reward.durationMinutes.toString(),
+                releaseType = item.reward.releaseType,
+                releasedPackages = item.releasedApps.map { it.packageName }.toSet()
+            )
+        }?.ifEmpty { null } ?: listOf(RewardDraft(releasedPackages = blockedPackages)))
+    }
+    var blockSettings by remember(initialRule) { mutableStateOf(initialRule?.rule?.blockSettings ?: false) }
+    var passwordProtected by remember(initialRule) { mutableStateOf(initialRule?.rule?.isPasswordProtected ?: false) }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordError by remember { mutableStateOf<String?>(null) }
-    val start = rememberTimePickerState(initialHour = 19, initialMinute = 0)
-    val end = rememberTimePickerState(initialHour = 23, initialMinute = 0)
+    val start = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleStartHour ?: 19, initialMinute = initialRule?.rule?.scheduleStartMinute ?: 0)
+    val end = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleEndHour ?: 23, initialMinute = initialRule?.rule?.scheduleEndMinute ?: 0)
     var showStart by remember { mutableStateOf(false) }
     var showEnd by remember { mutableStateOf(false) }
-    val selectedApps = installedApps.filter { it.packageName in selectedPackages }
-    val progressApp = installedApps.firstOrNull { it.packageName == progressPackage }
     val filteredApps = installedApps.filter { it.appName.contains(search, true) || it.packageName.contains(search, true) }
     val days = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+    val dayLabels = mapOf("MON" to "S", "TUE" to "T", "WED" to "Q", "THU" to "Q", "FRI" to "S", "SAT" to "S", "SUN" to "D")
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text("Create lockout", style = MaterialTheme.typography.headlineSmall) }
+            item { Text(if (initialRule == null) "Criar bloqueio" else "Editar bloqueio", style = MaterialTheme.typography.headlineSmall) }
+            item { OutlinedTextField(name, { name = it }, label = { Text("Nome do bloqueio") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
+            item { SectionTitle("1. Horário do bloqueio") }
             item {
-                OutlinedTextField(name, { name = it }, label = { Text("Lockout name") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { showStart = true }) { Text("Start: %02d:%02d".format(start.hour, start.minute)) }
-                    TextButton(onClick = { showEnd = true }) { Text("End: %02d:%02d".format(end.hour, end.minute)) }
-                }
-            }
-            item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    days.forEach { day ->
-                        FilterChip(
-                            selected = day in selectedDays,
-                            onClick = { selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day },
-                            label = { Text(day.take(1)) }
-                        )
+                Column {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton({ showStart = true }) { Text("Início: %02d:%02d".format(start.hour, start.minute)) }
+                        TextButton({ showEnd = true }) { Text("Fim: %02d:%02d".format(end.hour, end.minute)) }
+                    }
+                    val duration = ScheduleDuration.minutes(start.hour, start.minute, end.hour, end.minute)
+                    if (!ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)) {
+                        Text(if (duration == 0) "O início e o fim devem ser diferentes" else "O bloqueio não pode passar de 12 horas", color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
-            item { Text("Allowed apps", style = MaterialTheme.typography.titleMedium) }
             item {
-                OutlinedTextField(search, { search = it }, label = { Text("Search apps") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-            }
-            items(filteredApps.take(12), key = { it.packageName }) { app ->
-                val selected = app.packageName in selectedPackages
-                ListItem(
-                    leadingContent = { AppIcon(app.packageName, Modifier.size(36.dp), app.appName) },
-                    headlineContent = { Text(app.appName) },
-                    trailingContent = { Switch(selected, null) },
-                    modifier = Modifier.clickable {
-                        selectedPackages = if (selected) selectedPackages - app.packageName else selectedPackages + app.packageName
-                        if (selected && progressPackage == app.packageName) progressPackage = null
-                    }
-                )
-            }
-            if (selectedApps.isNotEmpty()) {
-                item { Text("Progress app", style = MaterialTheme.typography.titleMedium) }
-                items(selectedApps, key = { "progress-${it.packageName}" }) { app ->
-                    FilterChip(
-                        selected = progressPackage == app.packageName,
-                        onClick = { progressPackage = app.packageName },
-                        label = { Text(app.appName) }
-                    )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    days.forEach { day -> FilterChip(day in selectedDays, { selectedDays = if (day in selectedDays) selectedDays - day else selectedDays + day }, { Text(dayLabels.getValue(day)) }) }
                 }
             }
-            item { NumberField(goal, { goal = it }, "Minutes required in progress app") }
-            item { NumberField(reward, { reward = it }, "Free-time reward (minutes)") }
-            item { NumberField(maxRewards, { maxRewards = it }, "Maximum rewards") }
-            item { NumberField(contingencyAfter, { contingencyAfter = it }, "Alternative release after (hours)") }
-            item { NumberField(contingencyDuration, { contingencyDuration = it }, "Alternative release duration (minutes)") }
+            item { OutlinedTextField(search, { search = it }, label = { Text("Buscar aplicativos") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
+            item { SectionTitle("2. Aplicativos bloqueados") }
+            items(filteredApps, key = { "blocked-${it.packageName}" }) { app ->
+                AppSelectionRow(app, app.packageName in blockedPackages) {
+                    blockedPackages = toggle(blockedPackages, app.packageName)
+                    if (app.packageName !in blockedPackages) rewards = rewards.map { it.copy(releasedPackages = it.releasedPackages - app.packageName) }
+                    if (app.packageName in blockedPackages) taskPackages -= app.packageName
+                }
+            }
+            item { SectionTitle("3. Aplicativos de tarefa") }
+            items(filteredApps, key = { "task-${it.packageName}" }) { app ->
+                AppSelectionRow(app, app.packageName in taskPackages) {
+                    taskPackages = toggle(taskPackages, app.packageName)
+                    if (app.packageName in taskPackages) blockedPackages -= app.packageName
+                }
+            }
+            item { SectionTitle("4. Recompensas") }
+            items(rewards.indices.toList(), key = { "reward-$it" }) { index ->
+                RewardEditor(index, rewards[index], installedApps.filter { it.packageName in blockedPackages },
+                    onChange = { changed -> rewards = rewards.toMutableList().also { it[index] = changed } },
+                    onRemove = { rewards = rewards.toMutableList().also { it.removeAt(index) } })
+            }
+            item { TextButton({ rewards = rewards + RewardDraft(releasedPackages = blockedPackages) }) { Text("Adicionar recompensa") } }
             item {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Block Settings")
-                        Text("Prevent opening Android Settings during lockout", style = MaterialTheme.typography.bodySmall)
-                    }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text("Bloquear Configurações"); Text("Apps essenciais do sistema nunca serão bloqueados", style = MaterialTheme.typography.bodySmall) }
                     Switch(blockSettings, { blockSettings = it })
                 }
             }
             item {
-                PasswordProtectionSection(
-                    isEnabled = passwordProtected,
-                    onToggle = { passwordProtected = it },
-                    password = password,
-                    onPasswordChange = { password = it; passwordError = null },
-                    confirmPassword = confirmPassword,
-                    onConfirmPasswordChange = { confirmPassword = it; passwordError = null },
-                    error = passwordError
-                )
+                PasswordProtectionSection(passwordProtected, { passwordProtected = it }, password, { password = it; passwordError = null }, confirmPassword, { confirmPassword = it; passwordError = null }, passwordError)
             }
             item {
-                val valid = name.isNotBlank() && selectedApps.isNotEmpty() && progressApp != null && selectedDays.isNotEmpty() &&
-                    listOf(goal, reward, maxRewards, contingencyAfter, contingencyDuration).all { (it.toIntOrNull() ?: 0) > 0 }
-                Button(
-                    onClick = {
-                        if (passwordProtected && (password.length < 4 || password != confirmPassword)) {
-                            passwordError = if (password.length < 4) "Password must be at least 4 characters" else "Passwords do not match"
-                        } else {
-                            onSave(
-                                name, selectedApps, progressApp!!, start.hour, start.minute, end.hour, end.minute,
-                                selectedDays.joinToString(","), goal.toInt(), reward.toInt(), maxRewards.toInt(),
-                                contingencyAfter.toInt() * 60, contingencyDuration.toInt(), blockSettings,
-                                passwordProtected, password.takeIf { passwordProtected }
-                            )
-                        }
-                    },
-                    enabled = valid,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Save lockout") }
+                val validRewards = rewards.isNotEmpty() && rewards.all { rewardValid(it) && (it.releaseType == "END_SESSION" || it.releasedPackages.isNotEmpty()) }
+                val valid = name.isNotBlank() && blockedPackages.isNotEmpty() && taskPackages.isNotEmpty() && selectedDays.isNotEmpty() && validRewards && ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)
+                Button(onClick = {
+                    val passwordRequired = initialRule?.rule?.isPasswordProtected != true
+                    if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
+                        passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
+                    } else onSave(RuleEditorData(name, installedApps.filter { it.packageName in blockedPackages }, installedApps.filter { it.packageName in taskPackages }, start.hour, start.minute, end.hour, end.minute, selectedDays.joinToString(","), rewards, blockSettings, passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }))
+                }, enabled = valid, modifier = Modifier.fillMaxWidth()) { Text(if (initialRule == null) "Salvar bloqueio" else "Salvar alterações") }
             }
-            item { TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") } }
+            item { TextButton(onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") } }
             item { Spacer(Modifier.height(20.dp)) }
         }
     }
-
-    if (showStart) TimePickerDialog({ showStart = false }, { _, _ -> showStart = false }, start)
-    if (showEnd) TimePickerDialog({ showEnd = false }, { _, _ -> showEnd = false }, end)
+    if (showStart) TimePickerDialog({ showStart = false }, { showStart = false }, start)
+    if (showEnd) TimePickerDialog({ showEnd = false }, { showEnd = false }, end)
 }
 
-@Composable
-private fun NumberField(value: String, onValueChange: (String) -> Unit, label: String) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = { onValueChange(it.filter(Char::isDigit)) },
-        label = { Text(label) },
-        modifier = Modifier.fillMaxWidth(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        singleLine = true
-    )
+@Composable private fun SectionTitle(text: String) = Text(text, style = MaterialTheme.typography.titleMedium)
+
+@Composable private fun AppSelectionRow(app: InstalledApp, selected: Boolean, onClick: () -> Unit) {
+    ListItem(headlineContent = { Text(app.appName) }, supportingContent = { Text(app.packageName) }, trailingContent = { Switch(selected, null) }, modifier = Modifier.clickable(onClick = onClick))
 }
+
+@Composable private fun RewardEditor(index: Int, reward: RewardDraft, blockedApps: List<InstalledApp>, onChange: (RewardDraft) -> Unit, onRemove: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Recompensa ${index + 1}", style = MaterialTheme.typography.titleSmall)
+            OutlinedTextField(reward.name, { onChange(reward.copy(name = it)) }, label = { Text("Nome opcional") }, modifier = Modifier.fillMaxWidth())
+            NumberField(reward.requiredMinutes, { onChange(reward.copy(requiredMinutes = it)) }, "Tempo necessário no app de tarefa (min)")
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("Disponível em um horário", Modifier.weight(1f)); Switch(reward.scheduled, { onChange(reward.copy(scheduled = it)) }) }
+            if (reward.scheduled) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(reward.startTime, { onChange(reward.copy(startTime = it.take(5))) }, label = { Text("Início") }, modifier = Modifier.weight(1f))
+                OutlinedTextField(reward.endTime, { onChange(reward.copy(endTime = it.take(5))) }, label = { Text("Fim") }, modifier = Modifier.weight(1f))
+            }
+            Text("Tipo de liberação")
+            listOf("TEMPORARY" to "Por tempo definido", "UNTIL_END" to "Até o fim da sessão", "END_SESSION" to "Encerrar bloqueio atual").forEach { (value, label) ->
+                FilterChip(reward.releaseType == value, { onChange(reward.copy(releaseType = value)) }, { Text(label) })
+            }
+            if (reward.releaseType == "TEMPORARY") NumberField(reward.durationMinutes, { onChange(reward.copy(durationMinutes = it)) }, "Duração da recompensa (min)")
+            if (reward.releaseType != "END_SESSION") {
+                Text("Aplicativos liberados")
+                blockedApps.forEach { app -> AppSelectionRow(app, app.packageName in reward.releasedPackages) { onChange(reward.copy(releasedPackages = toggle(reward.releasedPackages, app.packageName))) } }
+            }
+            TextButton(onRemove) { Text("Remover recompensa") }
+        }
+    }
+}
+
+private fun rewardValid(reward: RewardDraft): Boolean = (reward.requiredMinutes.toIntOrNull() ?: 0) > 0 && (reward.releaseType != "TEMPORARY" || (reward.durationMinutes.toIntOrNull() ?: 0) > 0) && (!reward.scheduled || parseTime(reward.startTime) != null && parseTime(reward.endTime) != null && reward.startTime != reward.endTime)
+private fun parseTime(value: String): Pair<Int, Int>? { val parts = value.split(":"); val h = parts.getOrNull(0)?.toIntOrNull() ?: return null; val m = parts.getOrNull(1)?.toIntOrNull() ?: return null; return if (h in 0..23 && m in 0..59) h to m else null }
+private fun toggle(values: Set<String>, value: String): Set<String> = if (value in values) values - value else values + value
+
+@Composable private fun NumberField(value: String, onValueChange: (String) -> Unit, label: String) = OutlinedTextField(value, { onValueChange(it.filter(Char::isDigit)) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TimePickerDialog(onDismiss: () -> Unit, onConfirm: (Int, Int) -> Unit, state: TimePickerState) {
-    androidx.compose.material3.AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = { onConfirm(state.hour, state.minute) }) { Text("OK") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
-        text = { TimePicker(state = state) }
-    )
-}
+@Composable private fun TimePickerDialog(onDismiss: () -> Unit, onConfirm: () -> Unit, state: TimePickerState) = androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss, confirmButton = { TextButton(onConfirm) { Text("OK") } }, dismissButton = { TextButton(onDismiss) { Text("Cancelar") } }, text = { TimePicker(state = state) })

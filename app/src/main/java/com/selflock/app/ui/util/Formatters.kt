@@ -5,8 +5,8 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 object Formatters {
-    private val timeFormatter = DateTimeFormatter.ofPattern("h:mm a")
-    private val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
+    private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
     fun formatTime(hour: Int, minute: Int): String {
         return LocalTime.of(hour, minute).format(timeFormatter)
@@ -16,8 +16,8 @@ object Formatters {
         val hours = minutes / 60
         val mins = minutes % 60
         return when {
-            hours > 0 -> "$hours hours $mins minutes left"
-            else -> "$mins minutes left"
+            hours > 0 -> "Restam $hours horas e $mins minutos"
+            else -> "Restam $mins minutos"
         }
     }
 
