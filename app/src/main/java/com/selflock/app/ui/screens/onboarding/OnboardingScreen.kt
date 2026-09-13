@@ -104,15 +104,15 @@ fun OnboardingScreen(
 
     val steps = listOf(
         PermissionStep(
-            title = "Welcome to SelfLock",
-            description = "Take control of your digital habits. Block distracting apps on your schedule.",
+            title = "Bem-vindo ao SelfLock",
+            description = "Assuma o controle dos seus hábitos digitais. Bloqueie aplicativos que distraem nos horários definidos.",
             icon = Icons.Filled.Lock,
             action = {},
             isGranted = { true }
         ),
         PermissionStep(
-            title = "Recovery Account",
-            description = "Pick a Google account on this device. It will be used to verify your identity if you ever forget your master password.",
+            title = "Conta de recuperação",
+            description = "Escolha uma conta Google deste dispositivo. Ela será usada para confirmar sua identidade caso você esqueça a senha mestra.",
             icon = Icons.Filled.AccountCircle,
             action = {
                 chooseAccountLauncher.launch(viewModel.buildChooseAccountIntent())
@@ -120,50 +120,50 @@ fun OnboardingScreen(
             isGranted = { recoveryAccount != null }
         ),
         PermissionStep(
-            title = "Master Password",
-            description = "Optionally set a master password. You'll need to enter it every time the app launches.",
+            title = "Senha mestra",
+            description = "Defina uma senha mestra opcional. Você deverá digitá-la sempre que o aplicativo for aberto.",
             icon = Icons.Filled.VerifiedUser,
             action = {},
             isGranted = { passwordSet }
         ),
         PermissionStep(
-            title = "Accessibility Service",
-            description = "Detects which app is in the foreground for immediate block enforcement.",
+            title = "Serviço de acessibilidade",
+            description = "Detecta qual aplicativo está em primeiro plano para aplicar o bloqueio imediatamente.",
             icon = Icons.Filled.Accessibility,
             action = { context.startActivity(PermissionHelper.getAccessibilitySettingsIntent()) },
             isGranted = { PermissionHelper.isAccessibilityServiceEnabled(context) }
         ),
         PermissionStep(
-            title = "Usage Access",
-            description = "Tracks time in your selected progress app and provides backup lockout enforcement.",
+            title = "Acesso ao uso",
+            description = "Registra o tempo no aplicativo de progresso selecionado e reforça o bloqueio como alternativa.",
             icon = Icons.Filled.BarChart,
             action = { context.startActivity(PermissionHelper.getUsageAccessSettingsIntent()) },
             isGranted = { PermissionHelper.isUsageAccessGranted(context) }
         ),
         PermissionStep(
-            title = "Display Over Other Apps",
-            description = "Shows a blocking overlay when you try to open a restricted app.",
+            title = "Exibir sobre outros aplicativos",
+            description = "Exibe uma tela de bloqueio quando você tenta abrir um aplicativo restrito.",
             icon = Icons.Filled.Layers,
             action = { context.startActivity(PermissionHelper.getOverlaySettingsIntent(context)) },
             isGranted = { PermissionHelper.isOverlayPermissionGranted(context) }
         ),
         PermissionStep(
-            title = "Notifications",
-            description = "Shows persistent notifications about service status and budget warnings.",
+            title = "Notificações",
+            description = "Exibe notificações persistentes sobre o status do serviço e avisos de limite.",
             icon = Icons.Filled.Notifications,
             action = { context.startActivity(PermissionHelper.getNotificationSettingsIntent(context)) },
             isGranted = { PermissionHelper.isNotificationPermissionGranted(context) }
         ),
         PermissionStep(
-            title = "Exact Alarms",
-            description = "Schedules precise block/unblock times for your rules.",
+            title = "Alarmes exatos",
+            description = "Agenda horários exatos de bloqueio e desbloqueio para suas regras.",
             icon = Icons.Filled.Security,
             action = { context.startActivity(PermissionHelper.getExactAlarmSettingsIntent()) },
             isGranted = { PermissionHelper.isExactAlarmAllowed(context) }
         ),
         PermissionStep(
-            title = "Battery Optimization",
-            description = "Disabling battery optimization ensures SelfLock runs continuously in the background.",
+            title = "Otimização da bateria",
+            description = "Desativar a otimização da bateria permite que o SelfLock funcione continuamente em segundo plano.",
             icon = Icons.Filled.BatteryAlert,
             action = { context.startActivity(PermissionHelper.getBatteryOptimizationSettingsIntent(context)) },
             isGranted = { PermissionHelper.isBatteryOptimizationDisabled(context) }
@@ -226,13 +226,13 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         if (recoveryAccount != null) {
                             Text(
-                                text = "Selected: $recoveryAccount",
+                                text = "Selecionada: $recoveryAccount",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
                         } else {
                             Text(
-                                text = "No account selected yet",
+                                text = "Nenhuma conta selecionada",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -243,7 +243,7 @@ fun OnboardingScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         if (passwordSet) {
                             Text(
-                                text = "Master password is enabled. You can change it later in Settings.",
+                                text = "A senha mestra está ativada. Você poderá alterá-la depois em Configurações.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 textAlign = TextAlign.Center
@@ -267,7 +267,7 @@ fun OnboardingScreen(
                     onClick = { viewModel.onAccountPicked(null) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Clear Selection")
+                    Text("Limpar seleção")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
             }
@@ -280,14 +280,14 @@ fun OnboardingScreen(
                         onClick = { step.action() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (isAccountStep) "Choose Account" else "Grant Permission")
+                        Text(if (isAccountStep) "Escolher conta" else "Conceder permissão")
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 
                 if (currentStep < steps.lastIndex) {
                     TextButton(onClick = { currentStep++ }) {
-                        Text("Skip")
+                        Text("Pular")
                     }
                 }
             } else {
@@ -301,7 +301,7 @@ fun OnboardingScreen(
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (currentStep < steps.lastIndex) "Next" else "Get Started")
+                    Text(if (currentStep < steps.lastIndex) "Avançar" else "Começar")
                 }
             }
         }
@@ -320,7 +320,7 @@ private fun PasswordEntryFields(
     OutlinedTextField(
         value = password,
         onValueChange = { password = it; error = null },
-        label = { Text("Password") },
+        label = { Text("Senha") },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
@@ -335,7 +335,7 @@ private fun PasswordEntryFields(
     OutlinedTextField(
         value = confirm,
         onValueChange = { confirm = it; error = null },
-        label = { Text("Confirm password") },
+        label = { Text("Confirmar senha") },
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
         keyboardOptions = KeyboardOptions(
@@ -352,14 +352,14 @@ private fun PasswordEntryFields(
     Button(
         onClick = {
             when {
-                password.length < 4 -> error = "Password must be at least 4 characters"
-                password != confirm -> error = "Passwords do not match"
+                password.length < 4 -> error = "A senha deve ter pelo menos 4 caracteres"
+                password != confirm -> error = "As senhas não coincidem"
                 else -> onSet(password)
             }
         },
         enabled = !isSaving && password.isNotEmpty() && confirm.isNotEmpty(),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text("Set Password")
+        Text("Definir senha")
     }
 }

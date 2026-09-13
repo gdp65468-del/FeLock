@@ -89,7 +89,7 @@ class StatisticsViewModel @Inject constructor(
                     UsageItem(
                         targetId = usage.targetId,
                         targetType = TargetType.APP,
-                        displayName = rule?.progressAppName ?: "Unknown App",
+                        displayName = rule?.progressAppName ?: "Aplicativo desconhecido",
                         packageName = rule?.progressPackageName,
                         totalSeconds = usage.totalSeconds,
                         percentage = if (maxSeconds > 0) usage.totalSeconds.toFloat() / maxSeconds else 0f
