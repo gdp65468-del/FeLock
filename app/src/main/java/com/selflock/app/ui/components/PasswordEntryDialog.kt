@@ -41,7 +41,7 @@ fun PasswordEntryDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it; error = null },
-                    label = { Text("Password") },
+                    label = { Text("Senha") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     isError = error != null,
@@ -59,19 +59,19 @@ fun PasswordEntryDialog(
                             onVerified()
                             onDismiss()
                         } else {
-                            error = "Incorrect password"
+                            error = "Senha incorreta"
                         }
                         isVerifying = false
                     }
                 },
                 enabled = !isVerifying && password.isNotEmpty()
             ) {
-                Text("Confirm")
+                Text("Confirmar")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancelar")
             }
         }
     )

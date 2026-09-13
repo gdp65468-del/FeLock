@@ -1,6 +1,7 @@
 package com.selflock.app.domain.usecase
 
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import javax.inject.Inject
 
 data class InstalledApp(
@@ -16,6 +17,7 @@ class GetInstalledAppsUseCase @Inject constructor(
         return apps
             .filter {
                 it.packageName != "com.selflock.app" &&
+                    it.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0 &&
                     packageManager.getLaunchIntentForPackage(it.packageName) != null
             }
             .map {

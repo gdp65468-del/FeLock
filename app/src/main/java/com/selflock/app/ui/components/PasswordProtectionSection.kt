@@ -35,11 +35,11 @@ fun PasswordProtectionSection(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Password protect this rule",
+                    text = "Proteger esta regra com senha",
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    text = "Require password to modify this rule",
+                    text = "Exigir senha para modificar esta regra",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -56,7 +56,7 @@ fun PasswordProtectionSection(
             OutlinedTextField(
                 value = password,
                 onValueChange = onPasswordChange,
-                label = { Text("Rule password") },
+                label = { Text("Senha da regra") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
@@ -68,7 +68,7 @@ fun PasswordProtectionSection(
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = onConfirmPasswordChange,
-                label = { Text("Confirm password") },
+                label = { Text("Confirmar senha") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),

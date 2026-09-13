@@ -15,6 +15,7 @@ data class LockoutRule(
     val scheduleEndHour: Int,
     val scheduleEndMinute: Int,
     val scheduleDays: String,
+    val usesBlockedApps: Boolean = false,
     val progressPackageName: String,
     val progressAppName: String,
     val goalMinutes: Int,

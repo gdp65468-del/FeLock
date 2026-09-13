@@ -11,5 +11,8 @@ data class LockoutSession(
     val rewardsUsed: Int = 0,
     val rewardActiveUntil: Long = 0,
     val contingencyUsed: Boolean = false,
-    val contingencyActiveUntil: Long = 0
+    val contingencyActiveUntil: Long = 0,
+    val currentRewardPosition: Int = 0,
+    val activeRewardId: Long = 0,
+    val endedByReward: Boolean = false
 )

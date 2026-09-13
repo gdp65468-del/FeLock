@@ -21,8 +21,14 @@ class SelfLockAccessibilityService : AccessibilityService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
+            event?.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED) return
         val packageName = event.packageName?.toString() ?: return
+
+        startForegroundService(Intent(this, MonitoringService::class.java).apply {
+            action = MonitoringService.ACTION_FOREGROUND_CHANGED
+            putExtra(MonitoringService.EXTRA_FOREGROUND_PACKAGE, packageName)
+        })
         if (packageName == packageName()) return
 
         scope.launch {
@@ -30,10 +36,15 @@ class SelfLockAccessibilityService : AccessibilityService() {
             if (decision.isBlocked) {
                 val appName = runCatching {
                     packageManager.getApplicationLabel(packageManager.getApplicationInfo(packageName, 0)).toString()
-                }.getOrDefault("App")
+                }.getOrDefault("Aplicativo")
                 launchBlockOverlay(packageName, appName, decision)
             }
         }
+    }
+
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        startForegroundService(Intent(this, MonitoringService::class.java))
     }
 
     private fun launchBlockOverlay(
@@ -49,10 +60,10 @@ class SelfLockAccessibilityService : AccessibilityService() {
             putExtra(BlockOverlayActivity.EXTRA_RULE_ID, rule.id)
             putExtra(BlockOverlayActivity.EXTRA_RULE_NAME, rule.name)
             putExtra(BlockOverlayActivity.EXTRA_REMAINING_MINUTES, decision.remainingMinutes)
-            putExtra(BlockOverlayActivity.EXTRA_PROGRESS_APP_NAME, rule.progressAppName)
+            putExtra(BlockOverlayActivity.EXTRA_PROGRESS_APP_NAME, decision.taskAppName.ifBlank { rule.progressAppName })
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_PACKAGE_NAME, rule.progressPackageName)
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_SECONDS, decision.progressSeconds)
-            putExtra(BlockOverlayActivity.EXTRA_GOAL_MINUTES, rule.goalMinutes)
+            putExtra(BlockOverlayActivity.EXTRA_GOAL_MINUTES, decision.reward?.reward?.requiredMinutes ?: rule.goalMinutes)
             putExtra(BlockOverlayActivity.EXTRA_REWARDS_USED, decision.rewardsUsed)
             putExtra(BlockOverlayActivity.EXTRA_MAX_REWARDS, rule.maxRewards)
             putExtra(BlockOverlayActivity.EXTRA_CONTINGENCY_USED, decision.contingencyUsed)

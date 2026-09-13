@@ -47,10 +47,10 @@ fun StatisticsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Statistics") },
+                title = { Text("Estatísticas") },
                 actions = {
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        Icon(Icons.Filled.Settings, contentDescription = "Configurações")
                     }
                 }
             )
@@ -71,7 +71,7 @@ fun StatisticsScreen(
                 item {
                     Column(modifier = Modifier.padding(16.dp)) {
                         DateRangeSelector(
-                            options = listOf("Today", "Week", "Month"),
+                            options = listOf("Hoje", "Semana", "Mês"),
                             selectedIndex = state.dateRangeIndex,
                             onSelect = { viewModel.setDateRange(it) }
                         )
@@ -83,17 +83,17 @@ fun StatisticsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SummaryCard(
-                                title = "Screen Time",
+                                title = "Tempo de tela",
                                 value = Formatters.formatDuration(state.totalScreenTimeSeconds),
                                 modifier = Modifier.weight(1f)
                             )
                             SummaryCard(
-                                title = "Blocked",
+                                title = "Bloqueado",
                                 value = Formatters.formatDuration(state.totalBlockedSeconds),
                                 modifier = Modifier.weight(1f)
                             )
                             SummaryCard(
-                                title = "Blocks",
+                                title = "Bloqueios",
                                 value = state.blockCount.toString(),
                                 modifier = Modifier.weight(1f)
                             )
@@ -104,7 +104,7 @@ fun StatisticsScreen(
                 if (state.appUsage.isNotEmpty()) {
                     item {
                         Text(
-                            text = "Apps",
+                            text = "Aplicativos",
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -122,7 +122,7 @@ fun StatisticsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "No usage data for this period",
+                                text = "Nenhum dado de uso neste período",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
