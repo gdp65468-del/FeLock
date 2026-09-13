@@ -9,6 +9,7 @@ import com.selflock.app.domain.usecase.GetInstalledAppsUseCase
 import com.selflock.app.domain.usecase.InstalledApp
 import com.selflock.app.domain.usecase.LockoutManager
 import com.selflock.app.security.MasterPasswordManager
+import com.selflock.app.util.LockoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +40,8 @@ class AppBlockViewModel @Inject constructor(
     private val repository: LockoutRepository,
     private val lockoutManager: LockoutManager,
     private val getInstalledAppsUseCase: GetInstalledAppsUseCase,
-    private val masterPasswordManager: MasterPasswordManager
+    private val masterPasswordManager: MasterPasswordManager,
+    private val lockoutSettings: LockoutSettings
 ) : ViewModel() {
     private val _rules = MutableStateFlow<List<AppRuleUiState>>(emptyList())
     val rules: StateFlow<List<AppRuleUiState>> = _rules.asStateFlow()
@@ -52,6 +54,8 @@ class AppBlockViewModel @Inject constructor(
     private val _editingRule = MutableStateFlow<LockoutRuleWithApps?>(null)
     val editingRule: StateFlow<LockoutRuleWithApps?> = _editingRule.asStateFlow()
     private var ruleList: List<LockoutRuleWithApps> = emptyList()
+    val limitSchedulesToTwelveHours: Boolean
+        get() = lockoutSettings.limitSchedulesToTwelveHours
 
     init {
         viewModelScope.launch {

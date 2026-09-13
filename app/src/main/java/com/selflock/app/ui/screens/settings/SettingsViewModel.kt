@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.selflock.app.security.MasterPasswordManager
 import com.selflock.app.util.PermissionHelper
+import com.selflock.app.util.LockoutSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,8 @@ data class PermissionStatus(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val app: Application,
-    private val masterPasswordManager: MasterPasswordManager
+    private val masterPasswordManager: MasterPasswordManager,
+    private val lockoutSettings: LockoutSettings
 ) : AndroidViewModel(app) {
 
     private val _permissions = MutableStateFlow(PermissionStatus())
@@ -32,6 +34,13 @@ class SettingsViewModel @Inject constructor(
 
     private val _masterPasswordEnabled = MutableStateFlow(masterPasswordManager.isEnabled())
     val masterPasswordEnabled: StateFlow<Boolean> = _masterPasswordEnabled.asStateFlow()
+    private val _limitSchedulesToTwelveHours = MutableStateFlow(lockoutSettings.limitSchedulesToTwelveHours)
+    val limitSchedulesToTwelveHours: StateFlow<Boolean> = _limitSchedulesToTwelveHours.asStateFlow()
+
+    fun setLimitSchedulesToTwelveHours(enabled: Boolean) {
+        lockoutSettings.limitSchedulesToTwelveHours = enabled
+        _limitSchedulesToTwelveHours.value = enabled
+    }
 
     fun refreshPermissions() {
         viewModelScope.launch {

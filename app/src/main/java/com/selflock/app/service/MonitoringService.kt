@@ -43,6 +43,7 @@ class MonitoringService : Service() {
     private val observationMutex = Mutex()
     private lateinit var timeAccumulator: ForegroundTimeAccumulator
     private var lastUsageQueryTime = 0L
+    @Volatile private var lastAccessibilityObservationElapsed = 0L
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
@@ -55,6 +56,7 @@ class MonitoringService : Service() {
         const val CHANNEL_ID = "monitoring_service"
         const val NOTIFICATION_ID = 1002
         private const val POLL_INTERVAL_MS = 1000L
+        private const val ACCESSIBILITY_PRIORITY_MS = 2500L
         const val ACTION_FOREGROUND_CHANGED = "com.selflock.app.FOREGROUND_CHANGED"
         const val EXTRA_FOREGROUND_PACKAGE = "foreground_package"
     }
@@ -73,6 +75,7 @@ class MonitoringService : Service() {
         startPolling()
         if (intent?.action == ACTION_FOREGROUND_CHANGED) {
             val packageName = intent.getStringExtra(EXTRA_FOREGROUND_PACKAGE)
+            lastAccessibilityObservationElapsed = SystemClock.elapsedRealtime()
             scope.launch { observeForeground(packageName) }
         }
         return START_STICKY
@@ -89,6 +92,7 @@ class MonitoringService : Service() {
     }
 
     private suspend fun pollUsageStats() {
+        if (SystemClock.elapsedRealtime() - lastAccessibilityObservationElapsed < ACCESSIBILITY_PRIORITY_MS) return
         observationMutex.withLock {
             observeForegroundLocked(readForegroundPackage())
         }

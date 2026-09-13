@@ -39,12 +39,14 @@ import com.selflock.app.domain.usecase.InstalledApp
 import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.ui.components.AppIcon
 import com.selflock.app.ui.components.PasswordProtectionSection
+import com.selflock.app.util.ScheduleDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAppRuleSheet(
     installedApps: List<InstalledApp>,
     initialRule: LockoutRuleWithApps? = null,
+    limitSchedulesToTwelveHours: Boolean = true,
     onDismiss: () -> Unit,
     onSave: (
         String, List<InstalledApp>, InstalledApp, Int, Int, Int, Int, String,
@@ -84,9 +86,19 @@ fun AddAppRuleSheet(
                 OutlinedTextField(name, { name = it }, label = { Text("Nome do bloqueio") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
             }
             item {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = { showStart = true }) { Text("Início: %02d:%02d".format(start.hour, start.minute)) }
-                    TextButton(onClick = { showEnd = true }) { Text("Fim: %02d:%02d".format(end.hour, end.minute)) }
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { showStart = true }) { Text("Início: %02d:%02d".format(start.hour, start.minute)) }
+                        TextButton(onClick = { showEnd = true }) { Text("Fim: %02d:%02d".format(end.hour, end.minute)) }
+                    }
+                    val duration = ScheduleDuration.minutes(start.hour, start.minute, end.hour, end.minute)
+                    if (!ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)) {
+                        Text(
+                            if (duration == 0) "O início e o fim devem ser diferentes" else "O bloqueio não pode passar de 12 horas",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
             item {
@@ -153,7 +165,8 @@ fun AddAppRuleSheet(
             }
             item {
                 val valid = name.isNotBlank() && selectedApps.isNotEmpty() && progressApp != null && selectedDays.isNotEmpty() &&
-                    listOf(goal, reward, maxRewards, contingencyAfter, contingencyDuration).all { (it.toIntOrNull() ?: 0) > 0 }
+                    listOf(goal, reward, maxRewards, contingencyAfter, contingencyDuration).all { (it.toIntOrNull() ?: 0) > 0 } &&
+                    ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)
                 Button(
                     onClick = {
                         val passwordRequired = initialRule?.rule?.isPasswordProtected != true

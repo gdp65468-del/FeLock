@@ -36,6 +36,7 @@ fun SettingsSheet(
 ) {
     val permissions by viewModel.permissions.collectAsState()
     val masterPasswordEnabled by viewModel.masterPasswordEnabled.collectAsState()
+    val limitSchedulesToTwelveHours by viewModel.limitSchedulesToTwelveHours.collectAsState()
     val context = LocalContext.current
     var showSetPasswordSheet by remember { mutableStateOf(false) }
     var showDisableDialog by remember { mutableStateOf(false) }
@@ -53,6 +54,17 @@ fun SettingsSheet(
             "Status das permissões",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
+        ListItem(
+            headlineContent = { Text("Limitar bloqueios a 12 horas") },
+            supportingContent = { Text("Impede criar horários de bloqueio com mais de 12 horas") },
+            trailingContent = {
+                Switch(
+                    checked = limitSchedulesToTwelveHours,
+                    onCheckedChange = viewModel::setLimitSchedulesToTwelveHours
+                )
+            }
         )
 
         PermissionRow(
@@ -123,7 +135,7 @@ fun SettingsSheet(
 
         ListItem(
             headlineContent = { Text("Versão") },
-            supportingContent = { Text("1.2.0") }
+            supportingContent = { Text("1.3.0") }
         )
     }
 

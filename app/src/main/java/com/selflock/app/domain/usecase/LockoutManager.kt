@@ -1,5 +1,7 @@
 package com.selflock.app.domain.usecase
 
+import android.content.Context
+import android.content.Intent
 import com.selflock.app.data.local.entity.LockoutRule
 import com.selflock.app.data.local.entity.LockoutRuleWithApps
 import com.selflock.app.data.local.entity.LockoutSession
@@ -16,11 +18,13 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
 
 @Singleton
 class LockoutManager @Inject constructor(
     private val repository: LockoutRepository,
-    private val usageRepository: UsageRepository
+    private val usageRepository: UsageRepository,
+    @ApplicationContext private val context: Context
 ) {
     private val mutex = Mutex()
 
@@ -152,7 +156,12 @@ class LockoutManager @Inject constructor(
     }
 
     private fun isEssentialPackage(packageName: String): Boolean =
-        packageName == SELF_PACKAGE || packageName in ESSENTIAL_PACKAGES
+        packageName == SELF_PACKAGE || packageName in ESSENTIAL_PACKAGES || packageName in homePackages()
+
+    private fun homePackages(): Set<String> {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        return context.packageManager.queryIntentActivities(intent, 0).mapTo(mutableSetOf()) { it.activityInfo.packageName }
+    }
 
     companion object {
         private const val SELF_PACKAGE = "com.selflock.app"
@@ -161,6 +170,7 @@ class LockoutManager @Inject constructor(
             "com.android.systemui",
             "com.android.launcher3",
             "com.google.android.apps.nexuslauncher",
+            "com.mi.android.globallauncher",
             "com.android.permissioncontroller",
             "com.google.android.permissioncontroller",
             "com.android.inputmethod.latin",
