@@ -77,7 +77,7 @@ fun LockScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "O SelfLock está bloqueado",
+            text = "O feLock está bloqueado",
             style = MaterialTheme.typography.headlineMedium
         )
 

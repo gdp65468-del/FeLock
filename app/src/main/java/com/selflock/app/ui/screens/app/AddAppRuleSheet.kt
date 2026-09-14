@@ -1,36 +1,44 @@
 package com.selflock.app.ui.screens.app
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TimePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,54 +76,113 @@ data class RuleEditorData(
     val password: String?
 )
 
+data class RuleEditorDraft(
+    val name: String,
+    val blockedPackages: Set<String>,
+    val taskPackages: Set<String>,
+    val selectedDays: Set<String>,
+    val rewards: List<RewardDraft>,
+    val blockSettings: Boolean,
+    val passwordProtected: Boolean,
+    val password: String,
+    val confirmPassword: String,
+    val startHour: Int,
+    val startMinute: Int,
+    val endHour: Int,
+    val endMinute: Int
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAppRuleSheet(
     installedApps: List<InstalledApp>,
     initialRule: LockoutRuleWithApps? = null,
+    savedDraft: RuleEditorDraft? = null,
     limitSchedulesToTwelveHours: Boolean = true,
     onDismiss: () -> Unit,
+    onDiscard: () -> Unit,
+    onDraftChange: (RuleEditorDraft) -> Unit,
     onSave: (RuleEditorData) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var name by remember(initialRule) { mutableStateOf(initialRule?.rule?.name.orEmpty()) }
-    var blockedPackages by remember(initialRule) { mutableStateOf(initialRule?.blockedApps?.map { it.packageName }?.toSet().orEmpty()) }
-    var taskPackages by remember(initialRule) { mutableStateOf((initialRule?.taskApps?.map { it.packageName } ?: listOfNotNull(initialRule?.rule?.progressPackageName)).toSet()) }
-    var selectedDays by remember(initialRule) { mutableStateOf(initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI")) }
-    var search by remember { mutableStateOf("") }
-    var rewards by remember(initialRule) {
-        mutableStateOf(initialRule?.rewards?.sortedBy { it.reward.position }?.map { item ->
-            RewardDraft(
-                name = item.reward.name,
-                requiredMinutes = item.reward.requiredMinutes.toString(),
-                scheduled = item.reward.availabilityStartHour != null,
-                startTime = "%02d:%02d".format(item.reward.availabilityStartHour ?: 7, item.reward.availabilityStartMinute ?: 0),
-                endTime = "%02d:%02d".format(item.reward.availabilityEndHour ?: 8, item.reward.availabilityEndMinute ?: 0),
-                durationMinutes = item.reward.durationMinutes.toString(),
-                releaseType = item.reward.releaseType,
-                releasedPackages = item.releasedApps.map { it.packageName }.toSet()
-            )
-        }?.ifEmpty { null } ?: listOf(RewardDraft(releasedPackages = blockedPackages)))
+    val initialRewards = initialRule?.rewards?.sortedBy { it.reward.position }?.map { item ->
+        RewardDraft(
+            name = item.reward.name,
+            requiredMinutes = item.reward.requiredMinutes.toString(),
+            scheduled = item.reward.availabilityStartHour != null,
+            startTime = "%02d:%02d".format(item.reward.availabilityStartHour ?: 7, item.reward.availabilityStartMinute ?: 0),
+            endTime = "%02d:%02d".format(item.reward.availabilityEndHour ?: 8, item.reward.availabilityEndMinute ?: 0),
+            durationMinutes = item.reward.durationMinutes.toString(),
+            releaseType = item.reward.releaseType,
+            releasedPackages = item.releasedApps.map { it.packageName }.toSet()
+        )
+    }?.ifEmpty { null }
+    val baseline = remember(initialRule) {
+        RuleEditorDraft(
+            name = initialRule?.rule?.name.orEmpty(),
+            blockedPackages = initialRule?.blockedApps?.map { it.packageName }?.toSet().orEmpty(),
+            taskPackages = (initialRule?.taskApps?.map { it.packageName } ?: listOfNotNull(initialRule?.rule?.progressPackageName)).toSet(),
+            selectedDays = initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI"),
+            rewards = initialRewards ?: listOf(RewardDraft()),
+            blockSettings = initialRule?.rule?.blockSettings ?: false,
+            passwordProtected = initialRule?.rule?.isPasswordProtected ?: false,
+            password = "",
+            confirmPassword = "",
+            startHour = initialRule?.rule?.scheduleStartHour ?: 19,
+            startMinute = initialRule?.rule?.scheduleStartMinute ?: 0,
+            endHour = initialRule?.rule?.scheduleEndHour ?: 23,
+            endMinute = initialRule?.rule?.scheduleEndMinute ?: 0
+        )
     }
-    var blockSettings by remember(initialRule) { mutableStateOf(initialRule?.rule?.blockSettings ?: false) }
-    var passwordProtected by remember(initialRule) { mutableStateOf(initialRule?.rule?.isPasswordProtected ?: false) }
-    var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
+    val restored = savedDraft ?: baseline
+    var name by remember(initialRule, savedDraft) { mutableStateOf(restored.name) }
+    var blockedPackages by remember(initialRule, savedDraft) { mutableStateOf(restored.blockedPackages) }
+    var taskPackages by remember(initialRule, savedDraft) { mutableStateOf(restored.taskPackages) }
+    var selectedDays by remember(initialRule, savedDraft) { mutableStateOf(restored.selectedDays) }
+    var search by remember { mutableStateOf("") }
+    var rewards by remember(initialRule, savedDraft) { mutableStateOf(restored.rewards) }
+    var blockSettings by remember(initialRule, savedDraft) { mutableStateOf(restored.blockSettings) }
+    var passwordProtected by remember(initialRule, savedDraft) { mutableStateOf(restored.passwordProtected) }
+    var password by remember(initialRule, savedDraft) { mutableStateOf(restored.password) }
+    var confirmPassword by remember(initialRule, savedDraft) { mutableStateOf(restored.confirmPassword) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var expandedSection by remember { mutableStateOf(1) }
-    val start = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleStartHour ?: 19, initialMinute = initialRule?.rule?.scheduleStartMinute ?: 0)
-    val end = rememberTimePickerState(initialHour = initialRule?.rule?.scheduleEndHour ?: 23, initialMinute = initialRule?.rule?.scheduleEndMinute ?: 0)
+    val start = rememberTimePickerState(initialHour = restored.startHour, initialMinute = restored.startMinute)
+    val end = rememberTimePickerState(initialHour = restored.endHour, initialMinute = restored.endMinute)
     var showStart by remember { mutableStateOf(false) }
     var showEnd by remember { mutableStateOf(false) }
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
     val filteredApps = installedApps.filter { it.appName.contains(search, true) || it.packageName.contains(search, true) }
     val days = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
     val dayLabels = mapOf("MON" to "S", "TUE" to "T", "WED" to "Q", "THU" to "Q", "FRI" to "S", "SAT" to "S", "SUN" to "D")
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        LazyColumn(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val currentDraft = RuleEditorDraft(name, blockedPackages, taskPackages, selectedDays, rewards, blockSettings, passwordProtected, password, confirmPassword, start.hour, start.minute, end.hour, end.minute)
+    val validRewards = rewards.isNotEmpty() && rewards.all { rewardValid(it) && (it.releaseType == "END_SESSION" || it.releasedPackages.isNotEmpty()) }
+    val valid = name.isNotBlank() && blockedPackages.isNotEmpty() && taskPackages.isNotEmpty() && selectedDays.isNotEmpty() && validRewards && ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)
+    fun requestDismiss() {
+        if (currentDraft == baseline) onDismiss() else showDiscardConfirmation = true
+    }
+    fun save() {
+        val passwordRequired = initialRule?.rule?.isPasswordProtected != true
+        if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
+            passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
+        } else onSave(RuleEditorData(name, installedApps.filter { it.packageName in blockedPackages }, installedApps.filter { it.packageName in taskPackages }, start.hour, start.minute, end.hour, end.minute, selectedDays.joinToString(","), rewards, blockSettings, passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }))
+    }
+    SideEffect { onDraftChange(currentDraft) }
+    BackHandler(onBack = ::requestDismiss)
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(if (initialRule == null) "Novo plano de foco" else "Editar plano de foco") },
+                navigationIcon = { IconButton(onClick = ::requestDismiss) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Voltar") } },
+                actions = { TextButton(onClick = ::save, enabled = valid) { Text("Salvar") } }
+            )
+        }
+    ) { contentPadding ->
+        LazyColumn(modifier = Modifier.fillMaxSize().padding(contentPadding).padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(if (initialRule == null) "Novo plano de foco" else "Editar plano de foco", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text("Defina quando o bloqueio funciona, o que você fará e como conquistará suas recompensas.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -152,6 +219,22 @@ fun AddAppRuleSheet(
             item { SectionHeader(2, "Aplicativos bloqueados", "${blockedPackages.size} selecionados", expandedSection == 2) { expandedSection = if (expandedSection == 2) 0 else 2; search = "" } }
             if (expandedSection == 2) item { Text("Escolha somente os apps que deseja impedir durante este plano. Apps essenciais do Android não aparecem aqui.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (expandedSection == 2) item { OutlinedTextField(search, { search = it }, label = { Text("Buscar apps para bloquear") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
+            if (expandedSection == 2) item {
+                Column(Modifier.fillMaxWidth()) {
+                    Text("${blockedPackages.size} aplicativos selecionados", style = MaterialTheme.typography.labelLarge)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = {
+                            val packages = filteredApps.map { it.packageName }.toSet()
+                            blockedPackages += packages
+                            taskPackages -= packages
+                        }, modifier = Modifier.weight(1f)) { Text(if (search.isBlank()) "Selecionar todos" else "Selecionar resultados") }
+                        TextButton(onClick = {
+                            rewards = rewards.map { it.copy(releasedPackages = emptySet()) }
+                            blockedPackages = emptySet()
+                        }, modifier = Modifier.weight(1f)) { Text("Limpar seleção") }
+                    }
+                }
+            }
             if (expandedSection == 2) items(filteredApps, key = { "blocked-${it.packageName}" }) { app ->
                 AppSelectionRow(app, app.packageName in blockedPackages) {
                     blockedPackages = toggle(blockedPackages, app.packageName)
@@ -187,24 +270,21 @@ fun AddAppRuleSheet(
                 PasswordProtectionSection(passwordProtected, { passwordProtected = it }, password, { password = it; passwordError = null }, confirmPassword, { confirmPassword = it; passwordError = null }, passwordError)
             }
             item {
-                val validRewards = rewards.isNotEmpty() && rewards.all { rewardValid(it) && (it.releaseType == "END_SESSION" || it.releasedPackages.isNotEmpty()) }
-                val valid = name.isNotBlank() && blockedPackages.isNotEmpty() && taskPackages.isNotEmpty() && selectedDays.isNotEmpty() && validRewards && ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)
                 if (!valid) Text(
                     "Revise os campos: informe o nome, escolha apps bloqueados e de tarefa e configure pelo menos uma recompensa completa.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
-                Button(onClick = {
-                    val passwordRequired = initialRule?.rule?.isPasswordProtected != true
-                    if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
-                        passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
-                    } else onSave(RuleEditorData(name, installedApps.filter { it.packageName in blockedPackages }, installedApps.filter { it.packageName in taskPackages }, start.hour, start.minute, end.hour, end.minute, selectedDays.joinToString(","), rewards, blockSettings, passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }))
-                }, enabled = valid, modifier = Modifier.fillMaxWidth()) { Text(if (initialRule == null) "Salvar bloqueio" else "Salvar alterações") }
             }
-            item { TextButton(onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") } }
             item { Spacer(Modifier.height(20.dp)) }
         }
     }
+    if (showDiscardConfirmation) AlertDialog(
+        onDismissRequest = { showDiscardConfirmation = false },
+        title = { Text("Descartar alterações?") },
+        confirmButton = { TextButton(onClick = onDiscard) { Text("Descartar") } },
+        dismissButton = { TextButton(onClick = { showDiscardConfirmation = false }) { Text("Continuar editando") } }
+    )
     if (showStart) TimePickerDialog({ showStart = false }, { showStart = false }, start)
     if (showEnd) TimePickerDialog({ showEnd = false }, { showEnd = false }, end)
 }

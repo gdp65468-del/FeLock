@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SelfLock</string>
-    <string name="accessibility_service_description">O SelfLock usa este serviço para detectar qual aplicativo está em primeiro plano e aplicar os bloqueios ativos.</string>
+    <string name="app_name">feLock</string>
+    <string name="accessibility_service_description">O feLock usa este serviço para detectar qual aplicativo está em primeiro plano e aplicar os bloqueios ativos.</string>
     <string name="tab_apps">Aplicativos</string>
     <string name="tab_settings">Configurações</string>
     <string name="add_app_rule">Adicionar regra de aplicativo</string>
@@ -23,7 +23,7 @@
     <string name="notification_channel_monitoring">Serviço de monitoramento</string>
     <string name="notification_channel_blocks">Notificações de bloqueio</string>
     <string name="notification_channel_warnings">Avisos de limite</string>
-    <string name="notification_monitoring_title">O SelfLock está protegendo você</string>
+    <string name="notification_monitoring_title">O feLock está protegendo você</string>
     <string name="notification_monitoring_text">Monitorando o uso de aplicativos</string>
     <string name="notification_block_active_title">%1$s está bloqueado</string>
     <string name="notification_budget_warning_title">%1$s — %2$d%% do limite utilizado</string>
@@ -57,10 +57,10 @@
     <string name="permission_granted">Concedida</string>
     <string name="permission_denied">Negada</string>
     <string name="permission_fix">Corrigir</string>
-    <string name="onboarding_welcome_title">Bem-vindo ao SelfLock</string>
-    <string name="onboarding_welcome_desc">Assuma o controle dos seus hábitos digitais. O SelfLock ajuda a bloquear aplicativos que distraem nos horários definidos.</string>
+    <string name="onboarding_welcome_title">Bem-vindo ao feLock</string>
+    <string name="onboarding_welcome_desc">Assuma o controle dos seus hábitos digitais. O feLock ajuda a bloquear aplicativos que distraem nos horários definidos.</string>
     <string name="onboarding_permissions_title">Permissões necessárias</string>
-    <string name="onboarding_permissions_desc">O SelfLock precisa de algumas permissões para funcionar corretamente. Cada permissão é usada somente no seu dispositivo.</string>
+    <string name="onboarding_permissions_desc">O feLock precisa de algumas permissões para funcionar corretamente. Cada permissão é usada somente no seu dispositivo.</string>
     <string name="onboarding_grant_permission">Conceder permissão</string>
     <string name="onboarding_skip">Pular</string>
     <string name="onboarding_next">Avançar</string>

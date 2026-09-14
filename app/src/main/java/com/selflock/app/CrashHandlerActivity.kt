@@ -68,7 +68,7 @@ class CrashHandlerActivity : ComponentActivity() {
 
     private fun copyToClipboard(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("Falha do SelfLock", text))
+        clipboard.setPrimaryClip(ClipData.newPlainText("Falha do feLock", text))
     }
 
     private fun restartApp() {
@@ -97,7 +97,7 @@ private fun CrashScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "O SelfLock falhou",
+                text = "O feLock falhou",
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
