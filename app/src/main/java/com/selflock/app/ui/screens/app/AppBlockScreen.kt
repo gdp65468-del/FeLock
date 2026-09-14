@@ -89,8 +89,11 @@ fun AppBlockScreen(
         AddAppRuleSheet(
             installedApps = installedApps,
             initialRule = original,
+            savedDraft = viewModel.editDraft,
             limitSchedulesToTwelveHours = viewModel.limitSchedulesToTwelveHours,
             onDismiss = { viewModel.hideEditSheet() },
+            onDiscard = { viewModel.discardEditDraft() },
+            onDraftChange = viewModel::saveEditDraft,
             onSave = { viewModel.updateRule(original, it) }
         )
     }
@@ -98,8 +101,11 @@ fun AppBlockScreen(
     if (showAddSheet) {
         AddAppRuleSheet(
             installedApps = installedApps,
+            savedDraft = viewModel.addDraft,
             limitSchedulesToTwelveHours = viewModel.limitSchedulesToTwelveHours,
             onDismiss = { viewModel.hideAddSheet() },
+            onDiscard = { viewModel.discardAddDraft() },
+            onDraftChange = viewModel::saveAddDraft,
             onSave = viewModel::addRule
         )
     }

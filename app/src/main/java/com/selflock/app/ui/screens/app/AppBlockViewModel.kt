@@ -54,6 +54,10 @@ class AppBlockViewModel @Inject constructor(
     val pendingAction: StateFlow<PendingAction?> = _pendingAction.asStateFlow()
     private val _editingRule = MutableStateFlow<LockoutRuleWithApps?>(null)
     val editingRule: StateFlow<LockoutRuleWithApps?> = _editingRule.asStateFlow()
+    var addDraft: RuleEditorDraft? = null
+        private set
+    var editDraft: RuleEditorDraft? = null
+        private set
     private var ruleList: List<LockoutRuleWithApps> = emptyList()
     val limitSchedulesToTwelveHours: Boolean
         get() = lockoutSettings.limitSchedulesToTwelveHours
@@ -95,8 +99,13 @@ class AppBlockViewModel @Inject constructor(
     fun showAddSheet() { _showAddSheet.value = true }
     fun hideAddSheet() { _showAddSheet.value = false }
     fun hideEditSheet() { _editingRule.value = null }
+    fun saveAddDraft(draft: RuleEditorDraft) { addDraft = draft }
+    fun saveEditDraft(draft: RuleEditorDraft) { editDraft = draft }
+    fun discardAddDraft() { addDraft = null; _showAddSheet.value = false }
+    fun discardEditDraft() { editDraft = null; _editingRule.value = null }
 
     fun addRule(data: RuleEditorData) {
+        addDraft = null
         viewModelScope.launch {
             val firstTask = data.taskApps.first()
             val firstReward = data.rewards.first()
@@ -153,12 +162,14 @@ class AppBlockViewModel @Inject constructor(
         if (ruleWithApps.rule.isPasswordProtected) {
             _pendingAction.value = PendingAction(ruleWithApps.rule, RuleAction.EDIT)
         } else {
+            editDraft = null
             _editingRule.value = ruleWithApps
         }
     }
 
     fun updateRule(original: LockoutRuleWithApps, data: RuleEditorData) {
         if (lockoutManager.isActive(original.rule)) return
+        editDraft = null
         viewModelScope.launch {
             val firstTask = data.taskApps.first()
             val firstReward = data.rewards.first()

@@ -104,7 +104,7 @@ fun OnboardingScreen(
 
     val steps = listOf(
         PermissionStep(
-            title = "Bem-vindo ao SelfLock",
+            title = "Bem-vindo ao feLock",
             description = "Assuma o controle dos seus hábitos digitais. Bloqueie aplicativos que distraem nos horários definidos.",
             icon = Icons.Filled.Lock,
             action = {},
@@ -163,7 +163,7 @@ fun OnboardingScreen(
         ),
         PermissionStep(
             title = "Otimização da bateria",
-            description = "Desativar a otimização da bateria permite que o SelfLock funcione continuamente em segundo plano.",
+            description = "Desativar a otimização da bateria permite que o feLock funcione continuamente em segundo plano.",
             icon = Icons.Filled.BatteryAlert,
             action = { context.startActivity(PermissionHelper.getBatteryOptimizationSettingsIntent(context)) },
             isGranted = { PermissionHelper.isBatteryOptimizationDisabled(context) }
