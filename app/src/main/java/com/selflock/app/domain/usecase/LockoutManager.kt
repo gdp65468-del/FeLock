@@ -9,6 +9,7 @@ import com.selflock.app.data.local.entity.LockoutSession
 import com.selflock.app.data.repository.LockoutRepository
 import com.selflock.app.data.repository.UsageRepository
 import com.selflock.app.domain.model.LockoutDecision
+import com.selflock.app.domain.model.TaskApp
 import com.selflock.app.domain.model.TargetType
 import com.selflock.app.data.local.entity.UsageLog
 import com.selflock.app.util.ScheduleHelper
@@ -35,16 +36,18 @@ class LockoutManager @Inject constructor(
         for (ruleWithApps in activeRules) {
             val rule = ruleWithApps.rule
             val session = currentSession(rule, nowMillis)
-            if (session.endedByReward) continue
-            if (isEssentialPackage(packageName)) continue
-            if (packageName == SETTINGS_PACKAGE && !rule.blockSettings) continue
-            if (rule.usesBlockedApps) {
-                if (ruleWithApps.taskApps.any { it.packageName == packageName }) continue
-                if (ruleWithApps.blockedApps.none { it.packageName == packageName }) continue
-                if (isReleasedByActiveReward(ruleWithApps, session, packageName, nowMillis)) continue
-            } else {
-                if (isTemporarilyUnlocked(session, nowMillis)) continue
-                if (ruleWithApps.allowedApps.any { it.packageName == packageName }) continue
+            val isSettingsBlocked = packageName == SETTINGS_PACKAGE && rule.blockSettings
+            if (session.endedByReward && !isSettingsBlocked) continue
+            if (!isSettingsBlocked) {
+                if (isEssentialPackage(packageName)) continue
+                if (rule.usesBlockedApps) {
+                    if (ruleWithApps.taskApps.any { it.packageName == packageName }) continue
+                    if (ruleWithApps.blockedApps.none { it.packageName == packageName }) continue
+                    if (isReleasedByActiveReward(ruleWithApps, session, packageName, nowMillis)) continue
+                } else {
+                    if (isTemporarilyUnlocked(session, nowMillis)) continue
+                    if (ruleWithApps.allowedApps.any { it.packageName == packageName }) continue
+                }
             }
             val endMillis = windowEndMillis(rule, nowMillis)
             val contingencyAt = if (session.contingencyUsed) Long.MAX_VALUE else
@@ -60,6 +63,7 @@ class LockoutManager @Inject constructor(
                 contingencyAvailable = !session.contingencyUsed && nowMillis >= contingencyAt,
                 reward = ruleWithApps.rewards.sortedBy { it.reward.position }.getOrNull(session.currentRewardPosition),
                 taskAppName = ruleWithApps.taskApps.firstOrNull()?.appName ?: rule.progressAppName,
+                taskApps = ruleWithApps.taskApps.map { TaskApp(it.packageName, it.appName) },
                 rewardActiveUntil = session.rewardActiveUntil,
                 endedByReward = session.endedByReward
             )
@@ -125,6 +129,19 @@ class LockoutManager @Inject constructor(
 
     suspend fun getSession(rule: LockoutRule, nowMillis: Long = System.currentTimeMillis()): LockoutSession = mutex.withLock {
         currentSession(rule, nowMillis)
+    }
+
+    suspend fun managedLockTaskPackages(nowMillis: Long = System.currentTimeMillis()): Set<String> = mutex.withLock {
+        repository.getEnabledRules()
+            .filter { isActive(it.rule, nowMillis) && it.rule.managedProtection }
+            .flatMap { ruleWithApps ->
+                ruleWithApps.allowedApps.map { it.packageName } +
+                    ruleWithApps.blockedApps.map { it.packageName } +
+                    ruleWithApps.taskApps.map { it.packageName } +
+                    ruleWithApps.rewards.flatMap { reward -> reward.releasedApps.map { it.packageName } }
+            }
+            .plus(context.packageName)
+            .toSet()
     }
 
     fun isActive(rule: LockoutRule, nowMillis: Long = System.currentTimeMillis()): Boolean {
@@ -217,7 +234,6 @@ class LockoutManager @Inject constructor(
         private const val SETTINGS_PACKAGE = "com.android.settings"
         private val ESSENTIAL_PACKAGES = setOf(
             "com.android.systemui",
-            "com.android.settings",
             "com.android.launcher3",
             "com.google.android.apps.nexuslauncher",
             "com.mi.android.globallauncher",

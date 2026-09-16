@@ -62,6 +62,8 @@ class SelfLockAccessibilityService : AccessibilityService() {
             putExtra(BlockOverlayActivity.EXTRA_REMAINING_MINUTES, decision.remainingMinutes)
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_APP_NAME, decision.taskAppName.ifBlank { rule.progressAppName })
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_PACKAGE_NAME, rule.progressPackageName)
+            putStringArrayListExtra(BlockOverlayActivity.EXTRA_TASK_PACKAGES, ArrayList(decision.taskApps.map { it.packageName }))
+            putStringArrayListExtra(BlockOverlayActivity.EXTRA_TASK_NAMES, ArrayList(decision.taskApps.map { it.appName }))
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_SECONDS, decision.progressSeconds)
             putExtra(BlockOverlayActivity.EXTRA_GOAL_MINUTES, decision.reward?.reward?.requiredMinutes ?: rule.goalMinutes)
             putExtra(BlockOverlayActivity.EXTRA_REWARDS_USED, decision.rewardsUsed)

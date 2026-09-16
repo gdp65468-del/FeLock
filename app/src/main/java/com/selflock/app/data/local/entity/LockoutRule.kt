@@ -24,6 +24,7 @@ data class LockoutRule(
     val contingencyAfterMinutes: Int,
     val contingencyMinutes: Int,
     val blockSettings: Boolean = true,
+    val managedProtection: Boolean = false,
     val isPasswordProtected: Boolean = false,
     val passwordHash: String? = null,
     val createdAt: Long = Instant.now().toEpochMilli(),

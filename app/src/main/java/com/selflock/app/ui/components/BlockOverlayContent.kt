@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import com.selflock.app.ui.util.Formatters
 import kotlinx.coroutines.delay
 
+data class TaskAppOption(val packageName: String, val appName: String)
+
 @Composable
 fun BlockOverlayContent(
     appName: String,
@@ -39,6 +41,7 @@ fun BlockOverlayContent(
     ruleName: String,
     remainingMinutes: Long,
     progressAppName: String,
+    taskApps: List<TaskAppOption>,
     progressSeconds: Long,
     goalMinutes: Int,
     rewardsUsed: Int,
@@ -46,7 +49,7 @@ fun BlockOverlayContent(
     contingencyUsed: Boolean,
     contingencyAvailableAt: Long,
     contingencyMinutes: Int,
-    onOpenProgressApp: () -> Unit,
+    onOpenProgressApp: (String) -> Unit,
     onRelease: () -> Unit
 ) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -79,15 +82,17 @@ fun BlockOverlayContent(
             if (rewardsUsed < maxRewards) Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text("Ganhe tempo livre", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text("Use $progressAppName por mais $remainingGoalMinutes minutos.")
+                    Text("Use ${if (taskApps.size > 1) "um dos aplicativos de tarefa" else progressAppName} por mais $remainingGoalMinutes minutos.")
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = { if (goalSeconds > 0) (progressSeconds.toFloat() / goalSeconds).coerceIn(0f, 1f) else 0f },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    Button(onClick = onOpenProgressApp, modifier = Modifier.fillMaxWidth()) {
-                        Text("Abrir $progressAppName")
+                    taskApps.forEach { taskApp ->
+                        Button(onClick = { onOpenProgressApp(taskApp.packageName) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Abrir ${taskApp.appName}")
+                        }
                     }
                 }
             } else {
