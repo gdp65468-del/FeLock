@@ -72,6 +72,7 @@ data class RuleEditorData(
     val days: String,
     val rewards: List<RewardDraft>,
     val blockSettings: Boolean,
+    val managedProtection: Boolean,
     val passwordProtected: Boolean,
     val password: String?
 )
@@ -83,6 +84,7 @@ data class RuleEditorDraft(
     val selectedDays: Set<String>,
     val rewards: List<RewardDraft>,
     val blockSettings: Boolean,
+    val managedProtection: Boolean,
     val passwordProtected: Boolean,
     val password: String,
     val confirmPassword: String,
@@ -124,6 +126,7 @@ fun AddAppRuleSheet(
             selectedDays = initialRule?.rule?.getDaysList()?.toSet() ?: setOf("MON", "TUE", "WED", "THU", "FRI"),
             rewards = initialRewards ?: listOf(RewardDraft()),
             blockSettings = initialRule?.rule?.blockSettings ?: false,
+            managedProtection = initialRule?.rule?.managedProtection ?: false,
             passwordProtected = initialRule?.rule?.isPasswordProtected ?: false,
             password = "",
             confirmPassword = "",
@@ -141,6 +144,7 @@ fun AddAppRuleSheet(
     var search by remember { mutableStateOf("") }
     var rewards by remember(initialRule, savedDraft) { mutableStateOf(restored.rewards) }
     var blockSettings by remember(initialRule, savedDraft) { mutableStateOf(restored.blockSettings) }
+    var managedProtection by remember(initialRule, savedDraft) { mutableStateOf(restored.managedProtection) }
     var passwordProtected by remember(initialRule, savedDraft) { mutableStateOf(restored.passwordProtected) }
     var password by remember(initialRule, savedDraft) { mutableStateOf(restored.password) }
     var confirmPassword by remember(initialRule, savedDraft) { mutableStateOf(restored.confirmPassword) }
@@ -155,7 +159,7 @@ fun AddAppRuleSheet(
     val days = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
     val dayLabels = mapOf("MON" to "S", "TUE" to "T", "WED" to "Q", "THU" to "Q", "FRI" to "S", "SAT" to "S", "SUN" to "D")
 
-    val currentDraft = RuleEditorDraft(name, blockedPackages, taskPackages, selectedDays, rewards, blockSettings, passwordProtected, password, confirmPassword, start.hour, start.minute, end.hour, end.minute)
+    val currentDraft = RuleEditorDraft(name, blockedPackages, taskPackages, selectedDays, rewards, blockSettings, managedProtection, passwordProtected, password, confirmPassword, start.hour, start.minute, end.hour, end.minute)
     val validRewards = rewards.isNotEmpty() && rewards.all { rewardValid(it) && (it.releaseType == "END_SESSION" || it.releasedPackages.isNotEmpty()) }
     val valid = name.isNotBlank() && blockedPackages.isNotEmpty() && taskPackages.isNotEmpty() && selectedDays.isNotEmpty() && validRewards && ScheduleDuration.isAllowed(start.hour, start.minute, end.hour, end.minute, limitSchedulesToTwelveHours)
     fun requestDismiss() {
@@ -165,7 +169,7 @@ fun AddAppRuleSheet(
         val passwordRequired = initialRule?.rule?.isPasswordProtected != true
         if (passwordProtected && (password.isNotEmpty() || passwordRequired) && (password.length < 4 || password != confirmPassword)) {
             passwordError = if (password.length < 4) "A senha deve ter pelo menos 4 caracteres" else "As senhas não coincidem"
-        } else onSave(RuleEditorData(name, installedApps.filter { it.packageName in blockedPackages }, installedApps.filter { it.packageName in taskPackages }, start.hour, start.minute, end.hour, end.minute, selectedDays.joinToString(","), rewards, blockSettings, passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }))
+        } else onSave(RuleEditorData(name, installedApps.filter { it.packageName in blockedPackages }, installedApps.filter { it.packageName in taskPackages }, start.hour, start.minute, end.hour, end.minute, selectedDays.joinToString(","), rewards, blockSettings, managedProtection, passwordProtected, password.takeIf { passwordProtected && it.isNotEmpty() }))
     }
     SideEffect { onDraftChange(currentDraft) }
     BackHandler(onBack = ::requestDismiss)
@@ -262,10 +266,20 @@ fun AddAppRuleSheet(
             item { SectionHeader(5, "Proteção extra", if (passwordProtected) "Protegido por senha" else "Senha opcional", expandedSection == 5) { expandedSection = if (expandedSection == 5) 0 else 5 } }
             if (expandedSection == 5) item {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) { Text("Bloquear Configurações"); Text("Apps essenciais do sistema nunca serão bloqueados", style = MaterialTheme.typography.bodySmall) }
-                    Switch(blockSettings, { blockSettings = it })
+                    Column(Modifier.weight(1f)) { Text("Bloquear Configurações"); Text("Fica bloqueado durante todo o plano, inclusive no tempo livre", style = MaterialTheme.typography.bodySmall) }
+                    Switch(blockSettings, { blockSettings = it }, enabled = !managedProtection)
                 }
             }
+            if (expandedSection == 5) item {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text("Proteção total"); Text("Usa o modo quiosque em aparelho configurado como gerenciado", style = MaterialTheme.typography.bodySmall) }
+                    Switch(managedProtection, {
+                        managedProtection = it
+                        if (it) blockSettings = true
+                    })
+                }
+            }
+            if (expandedSection == 5 && managedProtection) item { Text("Exige configurar o FeLock como administrador do aparelho após restaurar o celular. Sem isso, este plano continua usando a proteção padrão.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (expandedSection == 5) item {
                 PasswordProtectionSection(passwordProtected, { passwordProtected = it }, password, { password = it; passwordError = null }, confirmPassword, { confirmPassword = it; passwordError = null }, passwordError)
             }

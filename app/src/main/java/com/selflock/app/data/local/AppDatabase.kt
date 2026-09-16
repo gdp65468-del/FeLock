@@ -21,7 +21,7 @@ import com.selflock.app.data.local.entity.UsageLog
 
 @Database(
     entities = [LockoutRule::class, LockoutAllowedApp::class, LockoutBlockedApp::class, LockoutTaskApp::class, LockoutReward::class, LockoutRewardApp::class, LockoutSession::class, UsageLog::class, BlockEvent::class],
-    version = 5,
+    version = 6,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -71,6 +71,12 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE TABLE IF NOT EXISTS lockout_reward_apps (rewardId INTEGER NOT NULL, packageName TEXT NOT NULL, PRIMARY KEY(rewardId, packageName))")
                 db.execSQL("INSERT INTO lockout_task_apps (ruleId, packageName, appName) SELECT id, progressPackageName, progressAppName FROM lockout_rules")
                 db.execSQL("INSERT INTO lockout_rewards (ruleId, position, name, requiredMinutes, durationMinutes, releaseType) SELECT id, 0, 'Recompensa', goalMinutes, rewardMinutes, 'TEMPORARY' FROM lockout_rules")
+            }
+        }
+
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE lockout_rules ADD COLUMN managedProtection INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

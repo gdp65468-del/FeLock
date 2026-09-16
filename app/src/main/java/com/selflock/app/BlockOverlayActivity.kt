@@ -8,7 +8,9 @@ import androidx.activity.addCallback
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import com.selflock.app.domain.usecase.LockoutManager
+import com.selflock.app.security.DeviceProtectionManager
 import com.selflock.app.ui.components.BlockOverlayContent
+import com.selflock.app.ui.components.TaskAppOption
 import com.selflock.app.ui.theme.SelfLockTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -18,6 +20,7 @@ import javax.inject.Inject
 class BlockOverlayActivity : ComponentActivity() {
 
     @Inject lateinit var lockoutManager: LockoutManager
+    @Inject lateinit var deviceProtectionManager: DeviceProtectionManager
 
     private var allowExit = false
 
@@ -29,6 +32,8 @@ class BlockOverlayActivity : ComponentActivity() {
         const val EXTRA_RULE_NAME = "extra_rule_name"
         const val EXTRA_PROGRESS_APP_NAME = "extra_progress_app_name"
         const val EXTRA_PROGRESS_PACKAGE_NAME = "extra_progress_package_name"
+        const val EXTRA_TASK_PACKAGES = "extra_task_packages"
+        const val EXTRA_TASK_NAMES = "extra_task_names"
         const val EXTRA_PROGRESS_SECONDS = "extra_progress_seconds"
         const val EXTRA_REWARDS_USED = "extra_rewards_used"
         const val EXTRA_MAX_REWARDS = "extra_max_rewards"
@@ -47,6 +52,7 @@ class BlockOverlayActivity : ComponentActivity() {
         window.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
         onBackPressedDispatcher.addCallback(this) {}
         showContent()
+        enterManagedProtection()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -54,11 +60,17 @@ class BlockOverlayActivity : ComponentActivity() {
         setIntent(intent)
         lastLaunchTime = System.currentTimeMillis()
         showContent()
+        enterManagedProtection()
     }
 
     private fun showContent() {
         val blockedPackage = intent.getStringExtra(EXTRA_PACKAGE_NAME).orEmpty()
         val progressPackage = intent.getStringExtra(EXTRA_PROGRESS_PACKAGE_NAME).orEmpty()
+        val taskPackages = intent.getStringArrayListExtra(EXTRA_TASK_PACKAGES).orEmpty()
+        val taskNames = intent.getStringArrayListExtra(EXTRA_TASK_NAMES).orEmpty()
+        val taskApps = taskPackages.mapIndexed { index, packageName ->
+            TaskAppOption(packageName, taskNames.getOrNull(index) ?: packageName)
+        }.ifEmpty { listOf(TaskAppOption(progressPackage, intent.getStringExtra(EXTRA_PROGRESS_APP_NAME).orEmpty())) }
         val ruleId = intent.getLongExtra(EXTRA_RULE_ID, 0)
         setContent {
             SelfLockTheme {
@@ -68,6 +80,7 @@ class BlockOverlayActivity : ComponentActivity() {
                     ruleName = intent.getStringExtra(EXTRA_RULE_NAME).orEmpty(),
                     remainingMinutes = intent.getLongExtra(EXTRA_REMAINING_MINUTES, 0),
                     progressAppName = intent.getStringExtra(EXTRA_PROGRESS_APP_NAME).orEmpty(),
+                    taskApps = taskApps,
                     progressSeconds = intent.getLongExtra(EXTRA_PROGRESS_SECONDS, 0),
                     goalMinutes = intent.getIntExtra(EXTRA_GOAL_MINUTES, 0),
                     rewardsUsed = intent.getIntExtra(EXTRA_REWARDS_USED, 0),
@@ -75,7 +88,7 @@ class BlockOverlayActivity : ComponentActivity() {
                     contingencyUsed = intent.getBooleanExtra(EXTRA_CONTINGENCY_USED, false),
                     contingencyAvailableAt = intent.getLongExtra(EXTRA_CONTINGENCY_AVAILABLE_AT, 0),
                     contingencyMinutes = intent.getIntExtra(EXTRA_CONTINGENCY_MINUTES, 0),
-                    onOpenProgressApp = { openApp(progressPackage) },
+                    onOpenProgressApp = ::openApp,
                     onRelease = {
                         lifecycleScope.launch {
                             if (lockoutManager.activateContingency(ruleId)) openApp(blockedPackage)
@@ -91,6 +104,15 @@ class BlockOverlayActivity : ComponentActivity() {
         allowExit = true
         startActivity(launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         finish()
+    }
+
+    private fun enterManagedProtection() {
+        lifecycleScope.launch {
+            deviceProtectionManager.enter(
+                this@BlockOverlayActivity,
+                lockoutManager.managedLockTaskPackages()
+            )
+        }
     }
 
     override fun onUserLeaveHint() {

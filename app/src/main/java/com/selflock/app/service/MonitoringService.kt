@@ -20,6 +20,7 @@ import com.selflock.app.BlockOverlayActivity
 import com.selflock.app.MainActivity
 import com.selflock.app.R
 import com.selflock.app.domain.usecase.LockoutManager
+import com.selflock.app.security.DeviceProtectionManager
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ class MonitoringService : Service() {
 
     @Inject lateinit var usageStatsManager: UsageStatsManager
     @Inject lateinit var lockoutManager: LockoutManager
+    @Inject lateinit var deviceProtectionManager: DeviceProtectionManager
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var pollingJob: Job? = null
@@ -112,6 +114,7 @@ class MonitoringService : Service() {
             powerManager.isInteractive && !keyguardManager.isDeviceLocked
         )
         if (interval != null) lockoutManager.recordProgress(interval.packageName, interval.seconds)
+        deviceProtectionManager.updateAllowedPackages(lockoutManager.managedLockTaskPackages())
         if (packageName == null || packageName == this.packageName) return
         val now = System.currentTimeMillis()
         val decision = lockoutManager.evaluate(packageName, now)
@@ -138,6 +141,8 @@ class MonitoringService : Service() {
             putExtra(BlockOverlayActivity.EXTRA_REMAINING_MINUTES, decision.remainingMinutes)
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_APP_NAME, decision.taskAppName.ifBlank { rule.progressAppName })
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_PACKAGE_NAME, rule.progressPackageName)
+            putStringArrayListExtra(BlockOverlayActivity.EXTRA_TASK_PACKAGES, ArrayList(decision.taskApps.map { it.packageName }))
+            putStringArrayListExtra(BlockOverlayActivity.EXTRA_TASK_NAMES, ArrayList(decision.taskApps.map { it.appName }))
             putExtra(BlockOverlayActivity.EXTRA_PROGRESS_SECONDS, decision.progressSeconds)
             putExtra(BlockOverlayActivity.EXTRA_GOAL_MINUTES, decision.reward?.reward?.requiredMinutes ?: rule.goalMinutes)
             putExtra(BlockOverlayActivity.EXTRA_REWARDS_USED, decision.rewardsUsed)
@@ -158,8 +163,6 @@ class MonitoringService : Service() {
             events.getNextEvent(event)
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED -> currentPackage = event.packageName
-                UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED -> if (currentPackage == event.packageName) currentPackage = null
             }
         }
         return currentPackage

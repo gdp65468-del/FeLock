@@ -25,7 +25,18 @@ If the goal is not completed, the overlay displays a **Release** button after th
 
 ## Enforcement
 
-The Accessibility Service reacts immediately when the foreground application changes. A foreground monitoring service polls Usage Stats every five seconds as backup enforcement and records progress. Lockout sessions, earned rewards, and contingency use are persisted in Room so process recreation does not reset them.
+The Accessibility Service reacts immediately when the foreground application changes. A foreground monitoring service polls Usage Stats every second as backup enforcement and records progress. Lockout sessions, earned rewards, and contingency use are persisted in Room so process recreation does not reset them.
+
+Each lockout can use one or more progress applications. Time accumulated in any selected progress application counts toward the same reward.
+
+When **Block Settings** is enabled, Android Settings remains blocked for the full scheduled lockout, including earned free-time windows.
+
+## Protection modes
+
+- **Standard protection** works on any supported Android device and blocks applications and Android Settings while the lockout is active.
+- **Full protection** uses Android lock task mode when SelfLock is configured as the device owner. This prevents leaving the allowed set of apps to reach Settings during a lockout. Device-owner setup requires a factory-reset device and provisioning during initial setup.
+
+For Xiaomi devices, set SelfLock battery usage to **No restrictions** and keep Accessibility, Usage Access, and battery-optimization exemption enabled so the foreground monitor is not interrupted.
 
 SelfLock does not inspect browser URLs, block website domains, or create a VPN connection.
 

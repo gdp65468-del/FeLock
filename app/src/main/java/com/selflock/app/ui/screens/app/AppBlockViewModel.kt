@@ -125,7 +125,8 @@ class AppBlockViewModel @Inject constructor(
                     maxRewards = data.rewards.size,
                     contingencyAfterMinutes = 120,
                     contingencyMinutes = 10,
-                    blockSettings = data.blockSettings,
+                    blockSettings = data.blockSettings || data.managedProtection,
+                    managedProtection = data.managedProtection,
                     isPasswordProtected = data.passwordProtected,
                     passwordHash = if (data.passwordProtected && data.password != null) hashPassword(data.password) else null,
                     createdAt = Instant.now().toEpochMilli(),
@@ -187,7 +188,8 @@ class AppBlockViewModel @Inject constructor(
                     goalMinutes = firstReward.requiredMinutes.toInt(),
                     rewardMinutes = firstReward.durationMinutes.toIntOrNull() ?: 0,
                     maxRewards = data.rewards.size,
-                    blockSettings = data.blockSettings,
+                    blockSettings = data.blockSettings || data.managedProtection,
+                    managedProtection = data.managedProtection,
                     isPasswordProtected = data.passwordProtected,
                     passwordHash = when {
                         !data.passwordProtected -> null
